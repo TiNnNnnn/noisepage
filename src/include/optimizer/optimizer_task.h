@@ -48,7 +48,7 @@ enum class OptimizerTaskType {
 class OptimizerTask {
  public:
   /**
-   * Constructor for OptimizerTask
+   * Constructor for OptimizerTask  
    * @param context OptimizationContext for current optimization
    * @param type Type of the optimization task
    */
@@ -235,7 +235,7 @@ class ApplyRule : public OptimizerTask {
         group_expr_(group_expr),
         rule_(rule),
         explore_only_(explore_only) {}
-
+ 
   /**
    * Function to execute the task
    */
@@ -256,8 +256,8 @@ class ApplyRule : public OptimizerTask {
    * Whether explore-only or explore and optimize
    */
   bool explore_only_;
-};
-
+}; 
+ 
 /**
  * OptimizeExpressionCostWithEnforcedProperty costs a physical expression. The root operator is costed first
  * and the lowest cost of each child group is added. Finally, properties are
@@ -419,7 +419,7 @@ class BottomUpRewrite : public OptimizerTask {
    * @param group_id Group to perform rewriting against
    * @param context Current optimize context
    * @param rule_set_name RuleSet to execute
-   * @param has_optimized_child Flag indicating whether children have been optimized
+   * @param has_optimized_child Flag indicating wheether children have been optimized
    */
   BottomUpRewrite(group_id_t group_id, OptimizationContext *context, RuleSetName rule_set_name,
                   bool has_optimized_child)

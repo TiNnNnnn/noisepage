@@ -303,12 +303,12 @@ void RewritePushFilterThroughAggregation::Transform(common::ManagedPointer<Abstr
 
   // Original leaf
   auto leaf = input->GetChildren()[0]->GetChildren()[0]->Copy();
-  std::unique_ptr<AbstractOptimizerNode> pushdown;
+  std::unique_ptr<AbstractOptimizerNode> pushdown; // new node
 
   // Construct filter if needed
   if (!pushdown_predicates.empty()) {
     std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-    c.emplace_back(std::move(leaf));
+    c.emplace_back(std::move(leaf)); // bind new node's childrens
     pushdown = std::make_unique<OperatorNode>(LogicalFilter::Make(std::move(pushdown_predicates))
                                                   .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                               std::move(c), context->GetOptimizerContext()->GetTxn());

@@ -118,7 +118,7 @@ void ExploreGroup::Execute() {
   // all expressions are explored
   group_->SetExplorationFlag();
 }
-
+ 
 //===--------------------------------------------------------------------===//
 // ExploreExpression
 //===--------------------------------------------------------------------===//
@@ -173,7 +173,7 @@ void ApplyRule::Execute() {
                                                                         g_id)) {
         // A new group expression is generated
         if (new_gexpr->Contents()->IsLogical()) {
-          // Derive stats for the *logical expression*
+          // Derive stats for the *logical expression* 
           PushTask(new DeriveStats(new_gexpr, context_));
           if (explore_only_) {
             // Explore this logical expression
@@ -224,7 +224,7 @@ void DeriveStats::Execute() {
 void OptimizeExpressionCostWithEnforcedProperty::Execute() {
   // Init logic: only run once per task
   OPTIMIZER_LOG_TRACE("OptimizeExpressionCostWithEnforcedProperty::Execute() ");
-  if (cur_child_idx_ == -1) {
+  if (cur_child_idx_ == -1) {  // 检查当前子表达式的索引是否为 -1，如果是，表示这是该任务的初次执行
     // TODO(patrick):
     // 1. We can init input cost using non-zero value for pruning
     // 2. We can calculate the current operator cost if we have maintain
@@ -246,18 +246,18 @@ void OptimizeExpressionCostWithEnforcedProperty::Execute() {
   }
 
   // Loop over (output prop, input props) pair for the GroupExpression being optimized
-  // (1) Cost children (if needed); or pick the best child expression (in terms of cost)
-  // (2) Enforce any missing properties as required
-  // (3) Update Group/Context metadata of expression + cost
+  // (1) Cost children (if needed); or pick the best child expression (in terms of cost) 对子表达式进行代价计算（如有必要）；或选取代价最小的子表达式
+  // (2) Enforce any missing properties as required  强制执行所需的任何属性
+  // (3) Update Group/Context metadata of expression + cost 更新组/上下文的元数据，包括表达式和代价
   for (; cur_prop_pair_idx_ < static_cast<int>(output_input_properties_.size()); cur_prop_pair_idx_++) {
     auto &output_prop = output_input_properties_[cur_prop_pair_idx_].first;
     auto &input_props = output_input_properties_[cur_prop_pair_idx_].second;
 
-    // Calculate local cost and update total cost
+    // Calculate local cost and update total cost 计算局部代价并更新总代价
     if (cur_child_idx_ == 0) {
-      // Compute the cost of the root operator
-      // 1. Collect stats needed and cache them in the group
-      // 2. Calculate cost based on children's stats
+      // Compute the cost of the root operator 计算根操作符的代价
+      // 1. Collect stats needed and cache them in the group 收集并缓存所需的统计信息
+      // 2. Calculate cost based on children's stats 基于子表达式的统计信息计算代价
       cur_total_cost_ += context_->GetOptimizerContext()->GetCostModel()->CalculateCost(
           context_->GetOptimizerContext()->GetTxn(), context_->GetOptimizerContext()->GetCatalogAccessor(),
           &context_->GetOptimizerContext()->GetMemo(), group_expr_);
@@ -275,7 +275,7 @@ void OptimizeExpressionCostWithEnforcedProperty::Execute() {
         if (cur_total_cost_ > context_->GetCostUpperBound()) break;
       } else if (prev_child_idx_ != cur_child_idx_) {  // We haven't optimized child group
         prev_child_idx_ = cur_child_idx_;
-        PushTask(new OptimizeExpressionCostWithEnforcedProperty(this));
+        PushTask(new OptimizeExpressionCostWithEnforcedProperty(this)); //need to cal cost again
 
         auto cost_high = context_->GetCostUpperBound() - cur_total_cost_;
         auto ctx = new OptimizationContext(context_->GetOptimizerContext(), i_prop->Copy(), cost_high);
@@ -288,12 +288,12 @@ void OptimizeExpressionCostWithEnforcedProperty::Execute() {
     }
 
     // TODO(wz2): Can we reduce the amount of copying
-    // Check whether we successfully optimize all child group
+    // Check whether we successfully optimize all child group 检查是否成功优化了所有子组
     if (cur_child_idx_ == static_cast<int>(group_expr_->GetChildrenGroupsSize())) {
       // Not need to do pruning here because it has been done when we get the
-      // best expr from the child group
+      // best expr from the child group 不需要在此处进行剪枝，因为在获取子组最佳表达式时已经进行了剪枝
 
-      // Add this group expression to group expression hash table
+      // Add this group expression to group expression hash table 将组表达式添加到局部哈希表中
       std::vector<PropertySet *> input_props_copy;
       input_props_copy.reserve(input_props.size());
       for (auto i_prop : input_props) {
@@ -342,7 +342,7 @@ void OptimizeExpressionCostWithEnforcedProperty::Execute() {
         }
       }
 
-      // Can meet the requirement
+      // Can meet the requirement 如果满足要求并且代价在上限之内，更新组的代价信息
       if (meet_requirement && cur_total_cost_ <= context_->GetCostUpperBound()) {
         // If the cost is smaller than the winner, update the context upper bound
         context_->SetCostUpperBound(context_->GetCostUpperBound() - cur_total_cost_);
@@ -427,7 +427,7 @@ void BottomUpRewrite::Execute() {
 
   // Construct valid transformation rules from rule set
   std::vector<Rule *> set = GetRuleSet().GetRulesByName(rule_set_name_);
-  ConstructValidRules(cur_group_expr, set, &valid_rules);
+  ConstructValidRules(cur_group_expr, set, &valid_rules); 
 
   // Sort so that we apply rewrite rules with higher promise first
   std::sort(valid_rules.begin(), valid_rules.end(), std::greater<>());

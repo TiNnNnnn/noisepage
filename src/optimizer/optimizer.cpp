@@ -54,10 +54,10 @@ std::unique_ptr<OptimizeResult> Optimizer::BuildPlanTree(
   } catch (OptimizerException &e) {
     OPTIMIZER_LOG_WARN("Optimize Loop ended prematurely: {0}", e.what());
   }
-
+ 
   try {
     PlanGenerator generator(optimize_result->GetPlanMetaData());
-    auto best_plan = ChooseBestPlan(txn, accessor, root_id, phys_properties, output_exprs, &generator);
+    auto best_plan = ChooseBestPlan(txn, accessor, root_id, phys_properties, output_exprs, &generator  );
 
     // Assign CTE Schema to each CTE Node
     for (auto &table : context_->GetCTETables()) {
@@ -220,7 +220,7 @@ void Optimizer::OptimizeLoop(group_id_t root_group_id, PropertySet *required_pro
   // Perform optimization after the rewrite
   Memo &memo = context_->GetMemo();
   task_stack->Push(new OptimizeGroup(memo.GetGroupByID(root_group_id), root_context));
-
+/*  */
   // Derive stats for the only one logical expression before optimizing
   task_stack->Push(new DeriveStats(memo.GetGroupByID(root_group_id)->GetLogicalExpression(), root_context));
 

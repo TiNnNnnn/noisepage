@@ -119,9 +119,9 @@ Transition SimpleQueryCommand::Exec(const common::ManagedPointer<ProtocolInterpr
   postgres_interpreter->ClosePortal("");
 
   auto query_text = in_.ReadString();
-
+  //parse query
   auto parse_result = t_cop->ParseQuery(query_text, connection);
-
+  //check if the query has error in language format
   if (std::holds_alternative<common::ErrorData>(parse_result)) {
     out->WriteError(std::get<common::ErrorData>(parse_result));
     if (connection->TransactionState() == network::NetworkTransactionStateType::BLOCK) {
@@ -130,7 +130,7 @@ Transition SimpleQueryCommand::Exec(const common::ManagedPointer<ProtocolInterpr
     }
     return FinishSimpleQueryCommand(out, connection);
   }
-
+  //build struct named statment
   const auto statement = std::make_unique<network::Statement>(
       std::move(query_text), std::move(std::get<std::unique_ptr<parser::ParseResult>>(parse_result)));
 

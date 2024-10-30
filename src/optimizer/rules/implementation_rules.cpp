@@ -60,7 +60,7 @@ bool LogicalGetToPhysicalSeqScan::Check(common::ManagedPointer<AbstractOptimizer
   (void)context;
   const auto get = plan->Contents()->GetContentsAs<LogicalGet>();
   return get->GetTableOid() != catalog::INVALID_TABLE_OID;
-}
+} 
 
 void LogicalGetToPhysicalSeqScan::Transform(common::ManagedPointer<AbstractOptimizerNode> input,
                                             std::vector<std::unique_ptr<AbstractOptimizerNode>> *transformed,

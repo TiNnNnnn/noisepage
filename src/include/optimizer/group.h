@@ -181,7 +181,7 @@ class Group {
    * Should only be called during rewrite phase.
    */
   void EraseLogicalExpression();
-
+ 
   /**
    * Gets the logical expression stored by this group.
    * Should only be called during rewrite phase.

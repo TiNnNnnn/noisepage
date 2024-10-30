@@ -14,7 +14,7 @@ namespace noisepage::optimizer {
  * This class is used to represent nodes in the operator tree. The operator tree is generated
  * by the binder by visiting the abstract syntax tree (AST) produced by the parser and servers
  * as the input to the query optimizer.
- */
+ */ 
 class OperatorNode : public AbstractOptimizerNode {
  public:
   /**

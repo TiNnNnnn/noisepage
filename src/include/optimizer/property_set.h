@@ -133,9 +133,15 @@ struct PropSetPtrEq {
    * @returns whether t1 is equal to t2
    */
   bool operator()(PropertySet *const &t1, PropertySet *const &t2) const { return *t1 == *t2; }
+  /**
+   * Checks whether two PropertySet are equal or not
+   * @param t1 One of the PropertySet
+   * @param t2 Other PropertySet
+   * @returns whether t1 is equal to t2
+   */
+  bool operator()(PropertySet *const &t1, PropertySet *const &t2) const { return *t1 == *t2; }
 };
-
-}  // namespace noisepage::optimizer
+};
 
 namespace std {
 
