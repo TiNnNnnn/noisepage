@@ -16,7 +16,7 @@ namespace noisepage::execution::sql {
 struct Val {
   /** NULL indication flag. */
   bool is_null_;
-
+ 
   /**
    * Construct a value with the given NULL indication.
    * @param is_null Whether the SQL value is NULL.

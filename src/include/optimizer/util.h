@@ -12,6 +12,7 @@
 #include "common/managed_pointer.h"
 #include "parser/expression/abstract_expression.h"
 #include "planner/plannodes/abstract_plan_node.h"
+#include "rule.h"
 
 namespace noisepage::catalog {
 class CatalogAccessor;
@@ -110,6 +111,13 @@ class OptimizerUtil {
    * @return An Aggregate expression with an underlying star expression
    */
   static parser::AbstractExpression *GenerateStarAggregateExpr(parser::ExpressionType aggregate_type, bool distinct);
+
+  /*
+    read wetune rules from wetune table/file
+    [info]: it should be used while database start
+  */
+  void read_wetune_rules(std::string tb_name,std::unordered_map<std::string,Rule*>&wetune_rules);
+
 };
 
 }  // namespace noisepage::optimizer

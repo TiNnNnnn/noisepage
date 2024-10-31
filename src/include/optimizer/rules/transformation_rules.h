@@ -67,3 +67,5 @@ class LogicalInnerJoinAssociativity : public Rule {
 };
 
 }  // namespace noisepage::optimizer
+
+

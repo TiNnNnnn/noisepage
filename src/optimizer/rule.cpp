@@ -71,6 +71,13 @@ RuleSet::RuleSet() {
   AddRule(RuleSetName::UNNEST_SUBQUERY, new DependentSingleJoinToInnerJoin());
   AddRule(RuleSetName::UNNEST_SUBQUERY, new RewritePullFilterThroughAggregation());
   AddRule(RuleSetName::PREDICATE_PUSH_DOWN, new RewriteUnionWithRecursiveCTE());
+
+  //add logical wetune rules
+  std::unordered_map<std::string,Rule*> wetune_rules;
+  read_wetune_rules("wetune_rules",wetune_rules);
+  for(const auto& r : wetune_rules){
+    AddRule(RuleSetName::LOGICAL_WETUNE,r.second);
+  }
 }
 
 }  // namespace noisepage::optimizer

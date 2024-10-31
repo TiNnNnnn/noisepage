@@ -17,6 +17,7 @@ enum class RuleType : uint32_t {
   // Transformation rules (logical -> logical)
   INNER_JOIN_COMMUTE = 0,
   INNER_JOIN_ASSOCIATE,
+  WETUNE_LOGICAL,
 
   // Don't move this one
   LogicalPhysicalDelimiter,
@@ -90,6 +91,7 @@ enum class RuleSetName : uint32_t {
   PREDICATE_PUSH_DOWN = 0,
   UNNEST_SUBQUERY,
   LOGICAL_TRANSFORMATION,
+  LOGICAL_WETUNE,
   PHYSICAL_IMPLEMENTATION
 };
 
@@ -304,10 +306,19 @@ class RuleSet {
   std::vector<Rule *> &GetRulesByName(RuleSetName set) { return rules_map_[static_cast<uint32_t>(set)]; }
 
  private:
+  
+  void read_wetune_rules(std::string tb_name,std::unordered_map<std::string,Rule*>&wetune_rules){
+    
+  }
+
+  //std::unordered_map<std::string,Rule*>wetune_rules_;
+
+ private:
   /**
    * Map from RuleSetName (uint32_t) -> vector of rules
    */
   std::unordered_map<uint32_t, std::vector<Rule *>> rules_map_;
 };
+
 
 }  // namespace noisepage::optimizer

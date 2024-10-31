@@ -7,15 +7,12 @@
 #include "optimizer/rule.h"
 
 namespace noisepage::optimizer {
+
     
-    class WeTuneRule;
-    std::unordered_map<std::string,WeTuneRule> wetune_rule_set;
     
     class WeTuneRule : public Rule {
-        WeTuneRule(){
-            //parser lisp to pattern
-            //match_pattern_ = new Pattern(OpType::LOGICALINNERJOIN);
-            auto ret = ParseRule()
+        WeTuneRule(std::string r){
+            //auto ret = ParseRule(r);
         }
         
         ~WeTuneRule(){
@@ -35,7 +32,19 @@ namespace noisepage::optimizer {
         /*
             parse the similar-lisp style to pattern,substitue
         */
-        bool ParseRule(const std::string& rule_str);
+        bool ParseRule(const std::string& rule_str){
+            /*
+                here we have two basic ideas to read rule,
+                1. create a wetune table with 4 cols (id,pattern,substitute,constraints)
+                2. just use simple file to store all the rules
+            */
+            
+        }
+
+        static bool WriteRulesIntoTable(std::string file_name){
+
+        }
+
         /*
             A substitute defines the structure of the result after applying the rule
         */
