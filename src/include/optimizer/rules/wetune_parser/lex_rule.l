@@ -35,9 +35,8 @@ while (0);
  * 第三个部分还是C代码，flex 会复制此段代码
  */
 
-#include "sql/parser/parse_defs.h"
-#include "common/log/log.h"
-#include "yacc_sql.hpp"
+#include "parser_defs.h"
+#include "yacc_rule.hpp"
 
 #ifndef register
 #define register 
@@ -46,7 +45,7 @@ while (0);
 extern int atoi();
 extern double atof();
 
-#define RETURN_TOKEN(token) LOG_DEBUG("%s", #token);return token
+#define RETURN_TOKEN(token) ;return token
 %}
 
 /* Prevent the need for linking with -lfl */
@@ -127,6 +126,10 @@ INNER                                   RETURN_TOKEN(INNER);
 LEFTJOIN                                RETURN_TOKEN(LEFTJOIN);
 RIGHTJOIN                               RETURN_TOKEN(RIGHTJOIN);
 INNERJOIN                               RETURN_TOKEN(INNERJOIN);
+INPUT                                   RETURN_TOKEN(INPUT);
+PROJ                                    RETURN_TOKEN(PROJ);
+INSUBFILTER                             RETURN_TOKEN(INSUBFILTER);
+FILTER                                  RETURN_TOKEN(FILTER);
 
 UNIQUE                                  RETURN_TOKEN(UNIQUE);
 
@@ -141,10 +144,11 @@ NOT                                     RETURN_TOKEN(NOT);
 PRIMARY                                 RETURN_TOKEN(PRIMARY);
 KEY                                     RETURN_TOKEN(KEY);
 NULLABLE                                RETURN_TOKEN(NULLABLE);
-RELEQ                                   RETURN_TOKEN(RELEQ);
-ATTREQ                                  RETURN_TOKEN(ATTREQ);
+
+TABLEEQ                                 RETURN_TOKEN(TABLEEQ);
+ATTRSEQ                                 RETURN_TOKEN(ATTRSEQ);
 PREDICATEEQ                             RETURN_TOKEN(PREDICATEEQ);
-SUBATTRS                                RETURN_TOKEN(SUBATTRS);
+ATTRSSUB                                RETURN_TOKEN(ATTRSSUB);
 REFATTRS                                RETURN_TOKEN(REFATTRS);
 NOTNULL                                 RETURN_TOKEN(NOTNULL);
 
@@ -168,14 +172,6 @@ NOTNULL                                 RETURN_TOKEN(NOTNULL);
 ">="                                    RETURN_TOKEN(GE);
 ">"                                     RETURN_TOKEN(GT);
 
-"+" |
-"-" |
-"*" |
-"/"                                     { return yytext[0]; }
-\"[^"]*\"                               yylval->string = strdup(yytext); RETURN_TOKEN(SSS);
-'[^']*\'                                yylval->string = strdup(yytext); RETURN_TOKEN(SSS);
-
-.                                       LOG_DEBUG("Unknown character [%c]",yytext[0]); return yytext[0];
 %%
 
 void scan_string(const char *str, yyscan_t scanner) {

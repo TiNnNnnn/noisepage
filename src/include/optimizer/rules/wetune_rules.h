@@ -5,14 +5,14 @@
 #include <unordered_map> 
 
 #include "optimizer/rule.h"
+#include "wetune_parser/parser_defs.h"
 
 namespace noisepage::optimizer {
 
-    
-    
     class WeTuneRule : public Rule {
-        WeTuneRule(std::string r){
-            //auto ret = ParseRule(r);
+        public:
+        WeTuneRule(std::string r,std::unique_ptr<ParsedSqlNode> sql_node){
+            //auto parse_pattern = sql_node->rulestr.left;    
         }
         
         ~WeTuneRule(){
@@ -20,7 +20,7 @@ namespace noisepage::optimizer {
         }
         
         bool Check(common::ManagedPointer<AbstractOptimizerNode> plan, OptimizationContext *context) const {
-            
+            return true;
         }
         
         void Transform(common::ManagedPointer<AbstractOptimizerNode> input,
@@ -30,25 +30,9 @@ namespace noisepage::optimizer {
 
         }
         /*
-            parse the similar-lisp style to pattern,substitue
-        */
-        bool ParseRule(const std::string& rule_str){
-            /*
-                here we have two basic ideas to read rule,
-                1. create a wetune table with 4 cols (id,pattern,substitute,constraints)
-                2. just use simple file to store all the rules
-            */
-            
-        }
-
-        static bool WriteRulesIntoTable(std::string file_name){
-
-        }
-
-        /*
             A substitute defines the structure of the result after applying the rule
         */
         Pattern* substitute_;
-        
+        std::string name_;
     };
 }

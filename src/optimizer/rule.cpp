@@ -2,7 +2,12 @@
 #include "optimizer/rules/implementation_rules.h"
 #include "optimizer/rules/rewrite_rules.h"
 #include "optimizer/rules/transformation_rules.h"
+#include "optimizer/rules/wetune_rules.h"
 #include "optimizer/rules/unnesting_rules.h"
+
+#include <fstream>
+#include <string>
+#include <unordered_map>
 
 namespace noisepage::optimizer {
 
@@ -74,10 +79,44 @@ RuleSet::RuleSet() {
 
   //add logical wetune rules
   std::unordered_map<std::string,Rule*> wetune_rules;
-  read_wetune_rules("wetune_rules",wetune_rules);
+  std::unordered_map<int,std::string>file_names;
+  file_names[4] = "wetune_rules";
+  read_wetune_rules(file_names,wetune_rules);
   for(const auto& r : wetune_rules){
     AddRule(RuleSetName::LOGICAL_WETUNE,r.second);
   }
 }
+
+void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,std::unordered_map<std::string,Rule*>&wetune_rules){
+    
+    for(auto fname : file_names){
+
+      std::ifstream file(fname.second);
+      //int rule_node_size = fname.first;
+
+      ParseStage parse_stage;
+
+      if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << fname.second << std::endl;
+        return;
+      }
+      std::string rule;
+      while (std::getline(file, rule)) {
+        if (rule.empty()) continue;
+        std::unique_ptr<ParsedSqlNode> sql_node;
+        if(!parse_stage.handle_request(rule,sql_node)){
+          std::cerr <<"Faild to parse rule file: "<< fname.second <<std::endl;
+          return;
+        }
+        Rule* wetune_rule = new WeTuneRule(rule,std::move(sql_node));
+        wetune_rules[rule] = wetune_rule;
+      }
+    }
+}
+
+/**
+ * in now version,here no used,we just read wetune rule file directly
+ */
+void RuleSet::write_wetune_rules(std::string tb_name){}
 
 }  // namespace noisepage::optimizer

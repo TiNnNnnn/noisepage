@@ -27,13 +27,13 @@ class Expression;
  */
 
 enum RewriteConstrainType{
-    RelEq,
-    AttrsEq,
-    PredEq,
-    SubAttrs,
-    RelAttrs,
-    Unique,
-    NotNull,
+    C_RelEq,
+    C_AttrsEq,
+    C_PredEq,
+    C_SubAttrs,
+    C_SchemaEq,
+    C_Unique,
+    C_NotNull,
 };
 
 struct ReWriteConstrain{
@@ -44,14 +44,14 @@ struct ReWriteConstrain{
 
 
 enum PatternType{
-  INPUT,
-  PROJ,
-  SEL,
-  INSUB,
-  LEFTJOIN,
-  RIGHTJOIN,
-  INNERJOIN,
-  DEDUP,
+  P_INPUT,
+  P_PROJ,
+  P_SEL,
+  P_INSUB,
+  P_LEFTJOIN,
+  P_RIGHTJOIN,
+  P_INNERJOIN,
+  P_DEDUP,
 };
 
 struct Pattern {
@@ -63,53 +63,11 @@ struct Pattern {
   std::vector<Pattern *> children_;
 };
 
-
 struct RuleNode {
   Pattern* left;
   Pattern* right;
   std::vector<ReWriteConstrain> condtions;
 };
-
-// class InputPattern: public Pattern{
-// public:
-//   std::vector<std::string> GetInfo() override{
-//     return relations;
-//   }
-
-//   std::vector<std::string> relations;
-// };
-
-// class ProjPattern : public Pattern{
-// public:
-//   std::vector<std::string> GetInfo() override{
-//     return relations;
-//   }
-
-//   std::vector<std::string> attributions;
-// }
-
-// class SelPattern : public Pattern{
-// public:
-//   std::vector<std::string> GetInfo() override{
-//     return attributions;
-//   }
-//   std::vector<std::string> attributions;
-// };
-
-// class InSubPattern : public Pattern{
-// public:
-//   std::vector<std::string> GetInfo() override{
-//     return attributions;
-//   }
-//   std::vector<std::string> attributions;
-// };
-
-// class DedupPattern : public Pattern{
-// public:
-//   std::vector<std::string> GetInfo()override{
-//     return std::vector<std::string>();
-//   }
-// };
 
 /**
  * @brief 解析SQL语句出现了错误
@@ -142,7 +100,7 @@ class ParsedSqlNode
 public:
   enum SqlCommandFlag flag;
   ErrorSqlNode        error;
-  RuleNode         rulestr;
+  RuleNode         rule;
   
 
 public:

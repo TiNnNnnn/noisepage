@@ -114,8 +114,24 @@ extern int yydebug;
     PRIMARY = 320,
     KEY = 321,
     BAR = 322,
-    RELEQ = 323,
-    ID = 324
+    TABLEEQ = 323,
+    ATTRSEQ = 324,
+    PREDICATEEQ = 325,
+    SCHEMAEQ = 326,
+    ATTRSSUB = 327,
+    REFATTRS = 328,
+    NOTNULL = 329,
+    LEFTJOIN = 330,
+    RIGHTJOIN = 331,
+    INNERJOIN = 332,
+    INPUT = 333,
+    PROJ = 334,
+    INSUBFILTER = 335,
+    FILTER = 336,
+    NUMBER = 337,
+    FLOAT = 338,
+    ID = 339,
+    SSS = 340
   };
 #endif
 
@@ -123,15 +139,18 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 113 "yacc_rule.y"
+#line 126 "yacc_rule.y"
 
   ParsedSqlNode *sql_node;
   Pattern* pattern;
   ReWriteConstrain * cs;
-  std::vector<ReWriteConstrain> cs_list;
-  std::string string;
+  std::vector<ReWriteConstrain>* cs_list;
+  char* string;
+  bool        boolean;
+  int  number;
+  float   floats;
 
-#line 135 "yacc_rule.hpp"
+#line 154 "yacc_rule.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

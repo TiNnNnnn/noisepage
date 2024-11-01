@@ -5,12 +5,9 @@
 #include <string.h>
 #include <algorithm>
 
-#include "common/log/log.h"
-#include "common/lang/string.h"
-#include "sql/parser/parse_defs.h"
-#include "sql/parser/yacc_sql.hpp"
-#include "sql/parser/lex_sql.h"
-#include "sql/expr/expression.h"
+#include "parser_defs.h"
+#include "yacc_rule.hpp"
+#include "lex_rule.h"
 
 using namespace std;
 
@@ -107,15 +104,22 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
         PRIMARY
         KEY
         BAR
-        RELEQ
-        ATTREQ                                  
-        PREDICATEEQ                             
-        SUBATTRS                                
+
+        TABLEEQ
+        ATTRSEQ                                  
+        PREDICATEEQ
+        SCHEMAEQ                             
+        ATTRSSUB                                
         REFATTRS                                
         NOTNULL
+
         LEFTJOIN
         RIGHTJOIN
         INNERJOIN
+        INPUT
+        PROJ
+        INSUBFILTER
+        FILTER 
 
         
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -123,12 +127,17 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
   ParsedSqlNode *sql_node;
   Pattern* pattern;
   ReWriteConstrain * cs;
-  std::vector<ReWriteConstrain> cs_list;
-  std::string string;
-  bool  distinct;
+  std::vector<ReWriteConstrain>* cs_list;
+  char* string;
+  bool        boolean;
+  int  number;
+  float   floats;
 }
 
-%token <string> ID 
+%token <number> NUMBER
+%token <floats> FLOAT
+%token <string> ID
+%token <string> SSS
 
 //非终结符
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
@@ -138,6 +147,7 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
 %type<pattern>   pattern 
 %type<cs>        constrain
 %type<cs_list>   constrain_list
+%type<boolean>   opt_star
 %%
 
 commands: command_wrapper opt_semicolon  //commands or sqls. parser starts here.
@@ -148,26 +158,58 @@ commands: command_wrapper opt_semicolon  //commands or sqls. parser starts here.
   ;
 
 command_wrapper:
-  rule_stmt;
-
+  rule_stmt
+  ;
 
 constrain:
-  {
-    $$ = nullptr;
-  }
-  | RELEQ LBRACE ID COMMA ID RBRACE
+  TABLEEQ LBRACE ID COMMA ID RBRACE
   {
     $$ = new ReWriteConstrain();
-    $$->type = RewriteConstrainType::RelEq;
+    $$->type = RewriteConstrainType::C_RelEq;
+    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
+  }
+  | ATTRSEQ LBRACE ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_AttrsEq;
+    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
+  }
+  | ATTRSSUB LBRACE ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_SubAttrs;
     $$->placeholders.push_back($3);
     $$->placeholders.push_back($3);
   }
-  | ATTREQ LBRACE ID COMMA ID RBRACE
+  | PREDICATEEQ LBRACE ID COMMA ID RBRACE
   {
     $$ = new ReWriteConstrain();
-    $$->type = RewriteConstrainType::AttrsEq;
+    $$->type = RewriteConstrainType::C_PredEq;
     $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
+  }
+  | SCHEMAEQ LBRACE ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_SchemaEq;
     $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
+  }
+  | NOTNULL LBRACE ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_NotNull;
+    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);    
+  }
+  | UNIQUE LBRACE ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_Unique;
+    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
   }
   ;
 
@@ -187,7 +229,7 @@ pattern:
   LEFTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new Pattern();
-    $$->type = PatternType::LEFTJOIN;
+    $$->type = PatternType::P_LEFTJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
     $$->children_.push_back($7);
@@ -196,7 +238,7 @@ pattern:
   | RIGHTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new Pattern();
-    $$->type = PatternType::RIGHTJOIN;
+    $$->type = PatternType::P_RIGHTJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
     $$->children_.push_back($7);
@@ -205,7 +247,7 @@ pattern:
   | INNERJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new Pattern();
-    $$->type = PatternType::INNERJOIN;
+    $$->type = PatternType::P_INNERJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
     $$->children_.push_back($7);
@@ -214,28 +256,53 @@ pattern:
   | INPUT '<' ID '>'
   {
     $$ = new Pattern();
-    $$->type = PatternType::INPUT;
+    $$->type = PatternType::P_INPUT;
     $$->rel_or_attrs.push_back($3);
   }
-  | PROJ ( '*' )? '<' ID ID '>' (pattern)
+  | PROJ opt_star '<' ID ID '>' LBRACE pattern RBRACE
   {
     $$ = new Pattern();
-    $$->type = PatternType::PROJ;
-    $$->distinct = ($2 != nullptr);
+    $$->type = PatternType::P_PROJ;
+    $$->distinct = $2;
     $$->rel_or_attrs.push_back($4);
     $$->rel_or_attrs.push_back($5);
-    $$->children_.push_back($7);
+    $$->children_.push_back($8);
   }
-
+  | INSUBFILTER '<' ID '>' LBRACE pattern COMMA pattern RBRACE
+  {
+    $$ = new Pattern();
+    $$->type = PatternType::P_INSUB;
+    $$->rel_or_attrs.push_back($3);
+    $$->children_.push_back($6);
+    $$->children_.push_back($8);
+  }
+  | FILTER '<' ID COMMA ID '>' LBRACE pattern RBRACE
+  {
+    $$ = new Pattern();
+    $$->type = PatternType::P_SEL;
+    $$->rel_or_attrs.push_back($3);
+    $$->rel_or_attrs.push_back($5);
+    $$->children_.push_back($8);
+  }
   ;
+opt_star:
+  {
+    $$ = false;
+  }
+  | '*'
+  {
+    $$ = true;
+  }
+  ;
+
 
 rule_stmt:
   pattern BAR pattern BAR constrain_list
   {
     $$ = new ParsedSqlNode(SCF_RULE);
-    $$->left = $1;
-    $$->right = $3;
-    $$->condtions = $5;
+    $$->rule.left = $1;
+    $$->rule.right = $3;
+    $$->rule.condtions = *$5;
   }
   ;
 

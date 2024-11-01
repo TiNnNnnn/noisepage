@@ -63,6 +63,8 @@ class Pattern {
    * Pattern Children
    */
   std::vector<Pattern *> children_;
+
+  
 };
 
 }  // namespace noisepage::optimizer

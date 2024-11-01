@@ -7,6 +7,7 @@
 #include "optimizer/operator_node.h"
 #include "optimizer/optimization_context.h"
 #include "optimizer/pattern.h"
+#include "optimizer/rules/wetune_parser/parse_stage.h"
 
 namespace noisepage::optimizer {
 
@@ -307,9 +308,9 @@ class RuleSet {
 
  private:
   
-  void read_wetune_rules(std::string tb_name,std::unordered_map<std::string,Rule*>&wetune_rules){
-    
-  }
+  void read_wetune_rules(std::unordered_map<int,std::string>& tb_name,std::unordered_map<std::string,Rule*>&wetune_rules);
+
+  void write_wetune_rules(std::string tb_name = "wetune_rule");
 
   //std::unordered_map<std::string,Rule*>wetune_rules_;
 
