@@ -9,9 +9,9 @@
 #include <functional>
 #include "optimizer/rule.h"
 #include "wetune_parser/parser_defs.h"
-#include "../parser/expression_defs.h"
-#include "../parser/expression_util.h"
-#include "../parser/expression/column_value_expression.h"
+#include "parser/expression_defs.h"
+#include "parser/expression_util.h"
+#include "parser/expression/column_value_expression.h"
 
 namespace noisepage::optimizer {
 
@@ -34,7 +34,7 @@ namespace noisepage::optimizer {
                 if(!BindPatternToPlan(plan,match_pattern_))return false;
                 //padding projection pattern attr info
                 BindProjectPattern(match_pattern_);
-
+                //check the constrains
                 for(auto constrain : constrains_){
                     if(constrain.placeholders.size() != 2){
                         std::cerr<<"bad wetune rule constrain placeholder size: "<<constrain.placeholders.size()<<std::endl;
@@ -58,7 +58,9 @@ namespace noisepage::optimizer {
             void Transform(common::ManagedPointer<AbstractOptimizerNode> input,
                     std::vector<std::unique_ptr<AbstractOptimizerNode>> *transformed,
                     OptimizationContext *context) const {
-                
+                /**
+                 * TODO: implement
+                 */
             }
 
             Pattern* MakePattern(WPattern* p){
@@ -118,6 +120,7 @@ namespace noisepage::optimizer {
 
             bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain) const {
                 switch(constrain.type){
+                    case RewriteConstrainType::C_SubAttrs:
                     case RewriteConstrainType::C_AttrsEq:{
                         auto get_attrs = [this,constrain](const Pattern* p) -> std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> {
                             if(p->Type() == OpType::LOGICALINNERJOIN){
@@ -137,34 +140,87 @@ namespace noisepage::optimizer {
                                 return GetJoinAttrs(filter_predicates,p,constrain);
                             }else if (p->Type() == OpType::LOGICALPROJECTION){
                                 return p->proj_;
+                            }else{
+                                return std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash>();
                             }
                         };
-                        //check the list of attr if equal
                         auto l_attr = get_attrs(l);
                         auto r_attr = get_attrs(r);
-                        if(l_attr.size() != r_attr.size())return false;
-                        for(auto a : l_attr){
-                            if(r_attr.find(a) != r_attr.end())return false;
+                        //check the list of attr if equal
+                        if(constrain.type == RewriteConstrainType::C_AttrsEq){
+                            if(l_attr.size() != r_attr.size())return false;
+                            for(auto a : l_attr){
+                                if(r_attr.find(a) != r_attr.end())return false;
+                            }
+                            return true;
+                        }else if(constrain.type == RewriteConstrainType::C_SubAttrs){
+                            if(l_attr.size() > r_attr.size())return false;
+                            for(auto a : l_attr){
+                                if(r_attr.find(a) != r_attr.end())return false;
+                            }
+                            return true;
                         }
-                        return true;
                     }break;
                     case RewriteConstrainType::C_PredEq:{
-                        
+                        /**
+                        * we simpliy check if the predicate is totally same,instead of more complex idea
+                        */
+                        auto get_preds = [this,constrain](const Pattern* p) -> std::vector<noisepage::optimizer::AnnotatedExpression> {
+                            if(p->Type() == OpType::LOGICALINNERJOIN){
+                                auto filter_predicates = std::vector<AnnotatedExpression>(p->inner_join_->GetJoinPredicates());
+                                return filter_predicates;
+                            }else if(p->Type() == OpType::LOGICALLEFTJOIN){
+                                auto filter_predicates = std::vector<AnnotatedExpression>(p->left_join_->GetJoinPredicates());
+                                return filter_predicates;
+                            }else if(p->Type() == OpType::LOGICALRIGHTJOIN){
+                                auto filter_predicates = std::vector<AnnotatedExpression>(p->right_join_->GetJoinPredicates());
+                                return filter_predicates;
+                            }else if(p->Type() == OpType::LOGICALFILTER){
+                                auto filter_predicates = std::vector<AnnotatedExpression>(p->filter_->GetPredicates());
+                                return filter_predicates;
+                            }else if(p->Type() == OpType::LOGICALSEMIJOIN){
+                                auto filter_predicates = std::vector<AnnotatedExpression>(p->semi_join_->GetJoinPredicates());
+                                return filter_predicates;
+                            }else{
+                                std::cerr<<"error pattern type without preds"<<std::endl;
+                                return std::vector<AnnotatedExpression>();
+                            }
+                        };
+                        auto l_preds = get_preds(l);
+                        auto r_preds = get_preds(r);
+                        if(l_preds.size() != r_preds.size())return false;
+                        return CheckPredEqual(l_preds,r_preds);
                     }break;
-                    case RewriteConstrainType::C_SchemaEq:{
-
+                    case RewriteConstrainType::C_SchemaEq :{
+                        /**
+                         * it seems like it only ocurr on Proj<a,s> ,and not used while checking ,but transformer
+                         */
                     }break;
                     case RewriteConstrainType::C_RelEq:{
-
-                    }break;
-                    case RewriteConstrainType::C_SubAttrs:{
-
+                        /**
+                         * it seems like it only ocurr on Input<t>
+                         */
+                        auto get_rel = [this](const Pattern* p) -> std::pair<catalog::db_oid_t,catalog::table_oid_t> {
+                        if(p->Type() == OpType::LOGICALGET){
+                                return std::make_pair(p->get_->GetDatabaseOid(),p->get_->GetTableOid());
+                            }
+                            return std::make_pair(catalog::INVALID_DATABASE_OID,catalog::INVALID_TABLE_OID);
+                        };
+                        auto l_rel = get_rel(l);
+                        auto r_rel = get_rel(r);
+                        if(l_rel.first != r_rel.first || l_rel.second != r_rel.second || l_rel.first != catalog::INVALID_DATABASE_OID){
+                            return false;
+                        }
+                        return true;                        
                     }break;
                     case RewriteConstrainType::C_Unique:{
-
+                        /**
+                         * Unique(t,a),we first get relation ,and then get attr 
+                         */
+                        
                     }break;
                     case RewriteConstrainType::C_NotNull:{
-
+                        
                     }break;
                     default:{
                         return false;
@@ -221,18 +277,41 @@ namespace noisepage::optimizer {
                     }break;
                     default:{
                         std::cerr<<"error type"<<std::endl;
-                        return;
+                        return false;
                     }
                 }
                 return ret;
             }
-
             std::string MakeName(const std::string &input) {
                 std::hash<std::string> hash_fn;
                 size_t hash_value = hash_fn(input);
                 return "LOGICAL_WETUNE_" + std::to_string(hash_value);
             }
         private:
+            
+            struct PredHash {
+                std::size_t operator()(const AnnotatedExpression& expr) const {
+                    /**
+                     * pred hash : 
+                     */
+                    //auto e = expr.GetExpr();
+                    return 0;
+                }
+            };
+
+            bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const {
+                std::unordered_set<AnnotatedExpression,PredHash>l_pred;
+                std::unordered_set<AnnotatedExpression,PredHash>r_pred;
+                
+                for(auto lp: l)l_pred.insert(lp);
+                for(auto rp: r)r_pred.insert(rp);
+
+                for(auto lp : l_pred){
+                    if(r_pred.find(lp) == r_pred.end())return false;
+                }
+                return true;
+            }
+
             void BindProjectPattern(Pattern* p) const{
                 if(p == nullptr)return;
                 for(size_t i=0;i<p->Children().size();i++){
@@ -323,6 +402,7 @@ namespace noisepage::optimizer {
                 }
             }
 
+
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
                 /**
                  * TODO: find the placeholder place in constrainer.
@@ -356,6 +436,7 @@ namespace noisepage::optimizer {
                         tb_oid_set.insert(p->Children()[0]->get_->GetTableOid());
                     }else if (child->Type() == OpType::LOGICALPROJECTION){
                         auto tb_oid = std::get<1>(*child->proj_.begin());
+                        tb_oid_set.insert(tb_oid);
                     }else{
                         std::cerr<<"bad type of join children pattern"<<std::endl;
                     }
@@ -365,7 +446,7 @@ namespace noisepage::optimizer {
                 if(tb_sets.size()!=1){
                     std::cerr<<"get tb_sets for join error, tb_sets size = "<<tb_sets.size()<<std::endl;
                 }
-                for(int i=0;i<preds.size();i++){
+                for(size_t i=0;i<preds.size();i++){
                     auto expr = preds[i].GetExpr();
                     switch(expr->GetExpressionType()){
                         case parser::ExpressionType::COMPARE_GREATER_THAN:
@@ -386,9 +467,13 @@ namespace noisepage::optimizer {
                                     attrs.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
                                 }
                             }
-                        }break;    
+                        }break;
+                        default:{
+                            return attrs;
+                        }
                     }
                 }
+                return attrs;
             }
 
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
@@ -398,7 +483,7 @@ namespace noisepage::optimizer {
                  *For more ,it seems like Filter pattern always associated with constrain such as AttrsSub(a4,s0)
                 */
                 std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
-                for(int i=0;i<preds.size();i++){
+                for(size_t i=0;i<preds.size();i++){
                     auto expr = preds[i].GetExpr();
                     switch(expr->GetExpressionType()){
                         case parser::ExpressionType::COMPARE_GREATER_THAN:
@@ -413,7 +498,10 @@ namespace noisepage::optimizer {
                                 auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
                                 attrs.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));    
                             }
-                        }break;    
+                        }break;
+                        default:{
+                            return attrs;
+                        } 
                     }
                 }
                 return attrs;
