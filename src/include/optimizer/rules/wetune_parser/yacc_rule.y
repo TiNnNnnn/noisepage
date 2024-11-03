@@ -125,7 +125,7 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
   ParsedSqlNode *sql_node;
-  Pattern* pattern;
+  WPattern* pattern;
   ReWriteConstrain * cs;
   std::vector<ReWriteConstrain>* cs_list;
   char* string;
@@ -228,7 +228,7 @@ constrain_list:
 pattern:
   LEFTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_LEFTJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
@@ -237,7 +237,7 @@ pattern:
   }
   | RIGHTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_RIGHTJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
@@ -246,7 +246,7 @@ pattern:
   }
   | INNERJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_INNERJOIN;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($4);
@@ -255,13 +255,13 @@ pattern:
   }
   | INPUT '<' ID '>'
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_INPUT;
     $$->rel_or_attrs.push_back($3);
   }
   | PROJ opt_star '<' ID ID '>' LBRACE pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_PROJ;
     $$->distinct = $2;
     $$->rel_or_attrs.push_back($4);
@@ -270,7 +270,7 @@ pattern:
   }
   | INSUBFILTER '<' ID '>' LBRACE pattern COMMA pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_INSUB;
     $$->rel_or_attrs.push_back($3);
     $$->children_.push_back($6);
@@ -278,7 +278,7 @@ pattern:
   }
   | FILTER '<' ID COMMA ID '>' LBRACE pattern RBRACE
   {
-    $$ = new Pattern();
+    $$ = new WPattern();
     $$->type = PatternType::P_SEL;
     $$->rel_or_attrs.push_back($3);
     $$->rel_or_attrs.push_back($5);

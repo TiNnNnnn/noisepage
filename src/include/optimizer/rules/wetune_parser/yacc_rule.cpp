@@ -237,7 +237,7 @@ union YYSTYPE
 #line 126 "yacc_rule.y"
 
   ParsedSqlNode *sql_node;
-  Pattern* pattern;
+  WPattern* pattern;
   ReWriteConstrain * cs;
   std::vector<ReWriteConstrain>* cs_list;
   char* string;
@@ -1722,7 +1722,7 @@ yyreduce:
   case 13:
 #line 230 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_LEFTJOIN;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-7].string));
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-6].string));
@@ -1735,7 +1735,7 @@ yyreduce:
   case 14:
 #line 239 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_RIGHTJOIN;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-7].string));
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-6].string));
@@ -1748,7 +1748,7 @@ yyreduce:
   case 15:
 #line 248 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_INNERJOIN;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-7].string));
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-6].string));
@@ -1761,7 +1761,7 @@ yyreduce:
   case 16:
 #line 257 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_INPUT;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-1].string));
   }
@@ -1771,7 +1771,7 @@ yyreduce:
   case 17:
 #line 263 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_PROJ;
     (yyval.pattern)->distinct = (yyvsp[-7].boolean);
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-5].string));
@@ -1784,7 +1784,7 @@ yyreduce:
   case 18:
 #line 272 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_INSUB;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-6].string));
     (yyval.pattern)->children_.push_back((yyvsp[-3].pattern));
@@ -1796,7 +1796,7 @@ yyreduce:
   case 19:
 #line 280 "yacc_rule.y"
   {
-    (yyval.pattern) = new Pattern();
+    (yyval.pattern) = new WPattern();
     (yyval.pattern)->type = PatternType::P_SEL;
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-6].string));
     (yyval.pattern)->rel_or_attrs.push_back((yyvsp[-4].string));

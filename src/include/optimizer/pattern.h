@@ -2,10 +2,23 @@
 
 #include <memory>
 #include <vector>
+#include <variant>
+#include <unordered_map>
 
 #include "optimizer/operator_node_contents.h"
+#include "optimizer/logical_operators.h"
 
 namespace noisepage::optimizer {
+
+        // 定义哈希函数对象
+struct TupleHash {
+  template <typename T>
+  std::size_t operator()(const T& tuple) const {
+    return std::hash<std::tuple_element_t<0, T>>{}(std::get<0>(tuple)) ^
+    std::hash<std::tuple_element_t<1, T>>{}(std::get<1>(tuple)) ^
+    std::hash<std::tuple_element_t<2, T>>{}(std::get<2>(tuple));
+  }
+};
 
 /**
  * Class defining a Pattern used for binding
@@ -35,6 +48,12 @@ class Pattern {
    */
   void AddChild(Pattern *child) { children_.push_back(child); }
 
+  void AddRelOrAttr(std::vector<std::string> v){rel_or_attrs_ = v;}
+  std::vector<std::string> GetRelOrAttr() const {return rel_or_attrs_;}
+
+  void SetContents(common::ManagedPointer<AbstractOptimizerNodeContents> contents){contents_ = contents;}
+  common::ManagedPointer<AbstractOptimizerNodeContents>& GetContents() {return contents_;}
+
   /**
    * Gets a vector of the children
    * @returns managed children of the pattern node
@@ -53,6 +72,21 @@ class Pattern {
    */
   OpType Type() const { return type_; }
 
+
+ public:
+
+    common::ManagedPointer<LogicalInnerJoin> inner_join_;
+    common::ManagedPointer<LogicalLeftJoin> left_join_;
+    common::ManagedPointer<LogicalRightJoin> right_join_;
+    common::ManagedPointer<LogicalFilter> filter_;
+    common::ManagedPointer<LogicalSemiJoin> semi_join_;
+    //common::ManagedPointer<LogicalProjection> proj_;
+    common::ManagedPointer<LogicalGet> get_;
+
+    std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> proj_;
+
+  //std::unordered_map<OpType, NodeVariant> pattern_type_to_node_;
+
  private:
   /**
    * Target Node Type
@@ -64,7 +98,10 @@ class Pattern {
    */
   std::vector<Pattern *> children_;
 
-  
+  std::vector<std::string>rel_or_attrs_;
+
+  common::ManagedPointer<AbstractOptimizerNodeContents> contents_;
+
 };
 
 }  // namespace noisepage::optimizer

@@ -1,17 +1,3 @@
-/* Copyright (c) 2021 OceanBase and/or its affiliates. All rights reserved.
-miniob is licensed under Mulan PSL v2.
-You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
-         http://license.coscl.org.cn/MulanPSL2
-THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-See the Mulan PSL v2 for more details. */
-
-//
-// Created by Meiyi
-//
-
 #pragma once
 
 #include <string>
@@ -54,18 +40,19 @@ enum PatternType{
   P_DEDUP,
 };
 
-struct Pattern {
+struct WPattern {
+public:
   //virtual std::vector<std::string> GetInfo();
   PatternType type;
   std::vector<std::string> rel_or_attrs;
   //just for Proj
   bool distinct;
-  std::vector<Pattern *> children_;
+  std::vector<WPattern *> children_;
 };
 
 struct RuleNode {
-  Pattern* left;
-  Pattern* right;
+  WPattern* left;
+  WPattern* right;
   std::vector<ReWriteConstrain> condtions;
 };
 

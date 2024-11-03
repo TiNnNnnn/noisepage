@@ -142,7 +142,7 @@ union YYSTYPE
 #line 126 "yacc_rule.y"
 
   ParsedSqlNode *sql_node;
-  Pattern* pattern;
+  WPattern* pattern;
   ReWriteConstrain * cs;
   std::vector<ReWriteConstrain>* cs_list;
   char* string;
