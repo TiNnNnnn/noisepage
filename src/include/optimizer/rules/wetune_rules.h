@@ -12,15 +12,20 @@
 #include "parser/expression_defs.h"
 #include "parser/expression_util.h"
 #include "parser/expression/column_value_expression.h"
+#include "catalog/catalog_accessor.h"
+#include "optimizer/optimizer_context.h"
 
 namespace noisepage::optimizer {
-
+    /**
+     * TODO: before apply wetune rules, we need first apply unnnesting rules
+     */
     class WeTuneRule : public Rule {
         public:
             WeTuneRule(std::string r,std::unique_ptr<ParsedSqlNode> sql_node){
                 constrains_ = sql_node->rule.condtions;
-                match_pattern_ =  MakePattern(sql_node->rule.left);
-                substitute_ = MakePattern(sql_node->rule.right);
+                match_pattern_ =  MakePattern(sql_node->rule.left,match_pattern_sets_);
+                substitute_ = MakePattern(sql_node->rule.right,substitute_sets_);
+                GetTransConstrains();
                 name_ = MakeName(r);
             }
             
@@ -58,464 +63,39 @@ namespace noisepage::optimizer {
             void Transform(common::ManagedPointer<AbstractOptimizerNode> input,
                     std::vector<std::unique_ptr<AbstractOptimizerNode>> *transformed,
                     OptimizationContext *context) const {
-                /**
-                 * TODO: implement
-                 */
+                auto root = BuildRewritePlan(substitute_,context);   
+                transformed->push_back(root); 
             }
-
-            Pattern* MakePattern(WPattern* p){
-                if(p == nullptr)return nullptr;
-                
-                Pattern* new_pattern;
-                if(p->type == PatternType::P_INNERJOIN){ 
-                    new_pattern = new Pattern(OpType::LOGICALINNERJOIN);
-                    auto left = MakePattern(p->children_[0]);
-                    auto right = MakePattern(p->children_[1]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddChild(right);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_INNERJOIN){
-                    new_pattern = new Pattern(OpType::LOGICALLEFTJOIN);
-                    auto left = MakePattern(p->children_[0]);
-                    auto right = MakePattern(p->children_[1]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddChild(right);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_RIGHTJOIN){
-                    new_pattern = new Pattern(OpType::LOGICALRIGHTJOIN);
-                    auto left = MakePattern(p->children_[0]);
-                    auto right = MakePattern(p->children_[1]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddChild(right);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_INPUT){
-                    new_pattern = new Pattern(OpType::LEAF);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_SEL){
-                    new_pattern = new Pattern(OpType::LOGICALFILTER);
-                    auto left = MakePattern(p->children_[0]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_PROJ){
-                    new_pattern = new Pattern(OpType::LOGICALPROJECTION);
-                    auto left = MakePattern(p->children_[0]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_INSUB){
-                    new_pattern = new Pattern(OpType::LOGICALSEMIJOIN);
-                    auto left = MakePattern(p->children_[0]);
-                    auto right = MakePattern(p->children_[1]);
-                    new_pattern->AddChild(left);
-                    new_pattern->AddChild(right);
-                    new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else{
-                    std::cout<<"error type of pattern"<<std::endl;
-                    return nullptr;
-                }
-                for(size_t i=0;i<p->rel_or_attrs.size();i++){
-                    binder_[p->rel_or_attrs[i]] = new_pattern;
-                }
-                return new_pattern;
-            }
-
-            bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain) const {
-                switch(constrain.type){
-                    case RewriteConstrainType::C_SubAttrs:
-                    case RewriteConstrainType::C_AttrsEq:{
-                        auto get_attrs = [this,constrain](const Pattern* p) -> std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> {
-                            if(p->Type() == OpType::LOGICALINNERJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->inner_join_->GetJoinPredicates());
-                                return GetJoinAttrs(filter_predicates,p,constrain);
-                            }else if(p->Type() == OpType::LOGICALLEFTJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->left_join_->GetJoinPredicates());
-                                return GetJoinAttrs(filter_predicates,p,constrain);
-                            }else if(p->Type() == OpType::LOGICALRIGHTJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->right_join_->GetJoinPredicates());
-                                return GetJoinAttrs(filter_predicates,p,constrain);
-                            }else if(p->Type() == OpType::LOGICALFILTER){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->filter_->GetPredicates());
-                                return GetFilterAttrs(filter_predicates,p,constrain);
-                            }else if(p->Type() == OpType::LOGICALSEMIJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->semi_join_->GetJoinPredicates());
-                                return GetJoinAttrs(filter_predicates,p,constrain);
-                            }else if (p->Type() == OpType::LOGICALPROJECTION){
-                                return p->proj_;
-                            }else{
-                                return std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash>();
-                            }
-                        };
-                        auto l_attr = get_attrs(l);
-                        auto r_attr = get_attrs(r);
-                        //check the list of attr if equal
-                        if(constrain.type == RewriteConstrainType::C_AttrsEq){
-                            if(l_attr.size() != r_attr.size())return false;
-                            for(auto a : l_attr){
-                                if(r_attr.find(a) != r_attr.end())return false;
-                            }
-                            return true;
-                        }else if(constrain.type == RewriteConstrainType::C_SubAttrs){
-                            if(l_attr.size() > r_attr.size())return false;
-                            for(auto a : l_attr){
-                                if(r_attr.find(a) != r_attr.end())return false;
-                            }
-                            return true;
-                        }
-                    }break;
-                    case RewriteConstrainType::C_PredEq:{
-                        /**
-                        * we simpliy check if the predicate is totally same,instead of more complex idea
-                        */
-                        auto get_preds = [this,constrain](const Pattern* p) -> std::vector<noisepage::optimizer::AnnotatedExpression> {
-                            if(p->Type() == OpType::LOGICALINNERJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->inner_join_->GetJoinPredicates());
-                                return filter_predicates;
-                            }else if(p->Type() == OpType::LOGICALLEFTJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->left_join_->GetJoinPredicates());
-                                return filter_predicates;
-                            }else if(p->Type() == OpType::LOGICALRIGHTJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->right_join_->GetJoinPredicates());
-                                return filter_predicates;
-                            }else if(p->Type() == OpType::LOGICALFILTER){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->filter_->GetPredicates());
-                                return filter_predicates;
-                            }else if(p->Type() == OpType::LOGICALSEMIJOIN){
-                                auto filter_predicates = std::vector<AnnotatedExpression>(p->semi_join_->GetJoinPredicates());
-                                return filter_predicates;
-                            }else{
-                                std::cerr<<"error pattern type without preds"<<std::endl;
-                                return std::vector<AnnotatedExpression>();
-                            }
-                        };
-                        auto l_preds = get_preds(l);
-                        auto r_preds = get_preds(r);
-                        if(l_preds.size() != r_preds.size())return false;
-                        return CheckPredEqual(l_preds,r_preds);
-                    }break;
-                    case RewriteConstrainType::C_SchemaEq :{
-                        /**
-                         * it seems like it only ocurr on Proj<a,s> ,and not used while checking ,but transformer
-                         */
-                    }break;
-                    case RewriteConstrainType::C_RelEq:{
-                        /**
-                         * it seems like it only ocurr on Input<t>
-                         */
-                        auto get_rel = [this](const Pattern* p) -> std::pair<catalog::db_oid_t,catalog::table_oid_t> {
-                        if(p->Type() == OpType::LOGICALGET){
-                                return std::make_pair(p->get_->GetDatabaseOid(),p->get_->GetTableOid());
-                            }
-                            return std::make_pair(catalog::INVALID_DATABASE_OID,catalog::INVALID_TABLE_OID);
-                        };
-                        auto l_rel = get_rel(l);
-                        auto r_rel = get_rel(r);
-                        if(l_rel.first != r_rel.first || l_rel.second != r_rel.second || l_rel.first != catalog::INVALID_DATABASE_OID){
-                            return false;
-                        }
-                        return true;                        
-                    }break;
-                    case RewriteConstrainType::C_Unique:{
-                        /**
-                         * Unique(t,a),we first get relation ,and then get attr 
-                         */
-                        
-                    }break;
-                    case RewriteConstrainType::C_NotNull:{
-                        
-                    }break;
-                    default:{
-                        return false;
-                    }
-
-                }
-                return true;
-            }
-
-            bool BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const {
-                if(pattern == nullptr)return true;
-                if(pattern->Type() != plan->Contents()->GetOpType()){
-                    return false;
-                }
-                bool ret = true;
-                for(size_t i=0;i<pattern->Children().size();i++){
-                    auto child = pattern->Children()[i];
-                    if(child->Type() == OpType::LOGICALPROJECTION){
-                        /**
-                         * 1. while meet the join pattern, we need pecial handling.
-                         * we directly skip the projection pattern to match its grandson pattern, 
-                         * inlcudes filter, join, input. 
-                         * 2. proj pattern has no plan contents
-                         * 3. through anayle the project pattern's father and son,we can know its attr
-                         */
-                        ret &= BindPatternToPlan(plan->GetChildren()[i],child->Children()[0]);
-                    }else{
-                        ret &= BindPatternToPlan(plan->GetChildren()[i],child);
-                    }
-                }
-                match_pattern_->SetContents(plan->Contents());
-                switch (match_pattern_->Type()){
-                    case OpType::LOGICALINNERJOIN:{
-                        match_pattern_->inner_join_ = plan->Contents()->GetContentsAs<LogicalInnerJoin>();
-                    }break;
-                    case OpType::LOGICALLEFTJOIN:{
-                        match_pattern_->left_join_ = plan->Contents()->GetContentsAs<LogicalLeftJoin>();
-                    }break;
-                    case OpType::LOGICALRIGHTJOIN:{
-                        match_pattern_->right_join_ = plan->Contents()->GetContentsAs<LogicalRightJoin>();
-                    }break;
-                    case OpType::LOGICALFILTER:{
-                        match_pattern_->filter_ = plan->Contents()->GetContentsAs<LogicalFilter>();
-                    }break;
-                    case OpType::LOGICALSEMIJOIN:{
-                        match_pattern_->semi_join_ = plan->Contents()->GetContentsAs<LogicalSemiJoin>();
-                    }break;
-                    case OpType::LOGICALPROJECTION:{
-                        //actually no use 
-                        //match_pattern_->proj_ = plan->Contents()->GetContentsAs<LogicalProjection>();
-                    }break;
-                    case OpType::LOGICALGET:{
-                        match_pattern_->get_ = plan->Contents()->GetContentsAs<LogicalGet>();
-                    }break;
-                    default:{
-                        std::cerr<<"error type"<<std::endl;
-                        return false;
-                    }
-                }
-                return ret;
-            }
+            
+        private:
+            Pattern* MakePattern(WPattern* p, std::unordered_set<std::string>& sets);
+            bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain) const;
+            bool BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const;
+            std::unique_ptr<AbstractOptimizerNode> BuildRewritePlan(Pattern* p,OptimizationContext *context) const;
+            void GetTransConstrains();
+            bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
+            void BindProjectPattern(Pattern* p) const;
+            
+            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
+            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
+            
             std::string MakeName(const std::string &input) {
                 std::hash<std::string> hash_fn;
                 size_t hash_value = hash_fn(input);
                 return "LOGICAL_WETUNE_" + std::to_string(hash_value);
             }
         private:
-            
-            struct PredHash {
-                std::size_t operator()(const AnnotatedExpression& expr) const {
-                    /**
-                     * pred hash : 
-                     */
-                    //auto e = expr.GetExpr();
-                    return 0;
-                }
-            };
-
-            bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const {
-                std::unordered_set<AnnotatedExpression,PredHash>l_pred;
-                std::unordered_set<AnnotatedExpression,PredHash>r_pred;
-                
-                for(auto lp: l)l_pred.insert(lp);
-                for(auto rp: r)r_pred.insert(rp);
-
-                for(auto lp : l_pred){
-                    if(r_pred.find(lp) == r_pred.end())return false;
-                }
-                return true;
-            }
-
-            void BindProjectPattern(Pattern* p) const{
-                if(p == nullptr)return;
-                for(size_t i=0;i<p->Children().size();i++){
-                    auto child = p->Children()[i];
-                    if(child->Type() == OpType::LOGICALPROJECTION){
-                        auto grandson = child->Children()[0];
-                        std::unordered_set<catalog::table_oid_t> tb_oid_set;
-                        switch(grandson->Type()){
-                            case OpType::LOGICALFILTER:{
-                                auto preds = grandson->filter_->GetPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                auto e = dynamic_cast<parser::ColumnValueExpression*>((*col_set.begin()).Get());
-                                tb_oid_set.insert(e->GetTableOid());
-                            }break;
-                            case OpType::LOGICALRIGHTJOIN:
-                            case OpType::LOGICALLEFTJOIN:
-                            case OpType::LOGICALINNERJOIN:{
-                                std::vector<AnnotatedExpression> preds; 
-                                if(grandson->Type() == OpType::LOGICALINNERJOIN){
-                                    preds = grandson->inner_join_->GetJoinPredicates();
-                                }else if(grandson->Type() == OpType::LOGICALLEFTJOIN){
-                                    preds = grandson->left_join_->GetJoinPredicates();
-                                }else{
-                                    preds = grandson->right_join_->GetJoinPredicates();
-                                }
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    tb_oid_set.insert(e->GetTableOid());    
-                                }
-                            }break;
-                            case OpType::LOGICALGET:{
-                                tb_oid_set.insert(p->Children()[0]->get_->GetTableOid());
-                            case OpType::LOGICALSEMIJOIN:{
-                                auto preds = grandson->semi_join_->GetJoinPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    tb_oid_set.insert(e->GetTableOid());    
-                                }
-                            }
-                            }break;
-                            default:{
-                                std::cerr<<"bad type of join grandson pattern"<<std::endl;
-                            }
-                        }
-                        switch(p->Type()){
-                            case OpType::LOGICALRIGHTJOIN:
-                            case OpType::LOGICALLEFTJOIN:
-                            case OpType::LOGICALINNERJOIN:{
-                               std::vector<AnnotatedExpression> preds; 
-                                if(grandson->Type() == OpType::LOGICALINNERJOIN){
-                                    preds = grandson->inner_join_->GetJoinPredicates();
-                                }else if(grandson->Type() == OpType::LOGICALLEFTJOIN){
-                                    preds = grandson->left_join_->GetJoinPredicates();
-                                }else{
-                                    preds = grandson->right_join_->GetJoinPredicates();
-                                }
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    if(tb_oid_set.find(e->GetTableOid())!=tb_oid_set.end()){
-                                        child->proj_.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
-                                    } 
-                                }
-                            }break;
-                            case OpType::LOGICALSEMIJOIN:{
-                                std::vector<AnnotatedExpression> preds = grandson->semi_join_->GetJoinPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    if(tb_oid_set.find(e->GetTableOid())!=tb_oid_set.end()){
-                                        child->proj_.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
-                                    } 
-                                }
-                            }break;
-                            default:{
-                                std::cerr<<"bad type of join grandson pattern"<<std::endl;
-                            }
-                        }
-                    }
-                    BindProjectPattern(p->Children()[i]);
-                }
-            }
-
-
-            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
-                /**
-                 * TODO: find the placeholder place in constrainer.
-                 */
-                std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
-                /**
-                 * if c_pos == 0,then we get attrs of left relation
-                 * if c_pos == 1,then we get attrs of right relation
-                 */
-                int c_pos = -1;
-                for(size_t i=0; i < p->GetRelOrAttr().size();i++){
-                    for(const auto& e : c.placeholders){
-                        if(e == p->GetRelOrAttr()[i]){
-                            c_pos = i;
-                            break;
-                        }
-                    }
-                }  
-                if(c_pos != 0 || c_pos != 1){
-                    std::cerr<<"failed to find constraint item in pattern relorattrs"<<std::endl;
-                    return attrs;
-                } 
-                auto GetTableNames = [](const Pattern* p,int idx) -> std::unordered_set<catalog::table_oid_t> {
-                    auto child = p->Children()[idx];
-                    std::unordered_set<catalog::table_oid_t> tb_oid_set;
-                    if(child->Type() == OpType::LOGICALGET){
-                        /**
-                        * TODO: 11_03,now we just let logicalget as a relation, not a output of subquery,because
-                        * if will lead the TableEq(t1,t2) more difficult
-                        */
-                        tb_oid_set.insert(p->Children()[0]->get_->GetTableOid());
-                    }else if (child->Type() == OpType::LOGICALPROJECTION){
-                        auto tb_oid = std::get<1>(*child->proj_.begin());
-                        tb_oid_set.insert(tb_oid);
-                    }else{
-                        std::cerr<<"bad type of join children pattern"<<std::endl;
-                    }
-                    return tb_oid_set;
-                };
-                auto tb_sets = GetTableNames(p,c_pos);
-                if(tb_sets.size()!=1){
-                    std::cerr<<"get tb_sets for join error, tb_sets size = "<<tb_sets.size()<<std::endl;
-                }
-                for(size_t i=0;i<preds.size();i++){
-                    auto expr = preds[i].GetExpr();
-                    switch(expr->GetExpressionType()){
-                        case parser::ExpressionType::COMPARE_GREATER_THAN:
-                        case parser::ExpressionType::COMPARE_GREATER_THAN_OR_EQUAL_TO:
-                        case parser::ExpressionType::COMPARE_LESS_THAN:
-                        case parser::ExpressionType::COMPARE_LESS_THAN_OR_EQUAL_TO:
-                        case parser::ExpressionType::COMPARE_NOT_EQUAL:
-                        case parser::ExpressionType::COMPARE_EQUAL:{
-                            ExprSet col_set;
-                            /**
-                             * TODO: it may lead to Potential bugs by directly using gettupleexprs,More sound 
-                             *       sconsiderations are needed to confirm that this is correct 
-                             */
-                            parser::ExpressionUtil::GetTupleValueExprs(&col_set,expr);
-                            for(auto& col_expr: col_set){
-                                auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                if(tb_sets.find(e->GetTableOid())!=tb_sets.end()){
-                                    attrs.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
-                                }
-                            }
-                        }break;
-                        default:{
-                            return attrs;
-                        }
-                    }
-                }
-                return attrs;
-            }
-
-            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
-                /** 
-                 *TODO: find the placeholder place in constrainer.
-                 *for filter , predicate always occuer in the first palce, attr always occuer in the second place ,such as Filter(p0,a4) 
-                 *For more ,it seems like Filter pattern always associated with constrain such as AttrsSub(a4,s0)
-                */
-                std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
-                for(size_t i=0;i<preds.size();i++){
-                    auto expr = preds[i].GetExpr();
-                    switch(expr->GetExpressionType()){
-                        case parser::ExpressionType::COMPARE_GREATER_THAN:
-                        case parser::ExpressionType::COMPARE_GREATER_THAN_OR_EQUAL_TO:
-                        case parser::ExpressionType::COMPARE_LESS_THAN:
-                        case parser::ExpressionType::COMPARE_LESS_THAN_OR_EQUAL_TO:
-                        case parser::ExpressionType::COMPARE_NOT_EQUAL:
-                        case parser::ExpressionType::COMPARE_EQUAL:{
-                            ExprSet col_set;
-                            parser::ExpressionUtil::GetTupleValueExprs(&col_set,expr);
-                            for(auto& col_expr: col_set){
-                                auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                attrs.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));    
-                            }
-                        }break;
-                        default:{
-                            return attrs;
-                        } 
-                    }
-                }
-                return attrs;
-            }
-        private:
-            /**
-             *  A substitute defines the structure of the result after applying the rule
-             */
+            // A substitute defines the structure of the result after applying the rule
             Pattern* substitute_;
-            /**
-             *  rule name contains its rulesttr with hash
-             */
+            //rule name contains its rulesttr with hash
             std::string name_;
+            //divide constrains into two types
             std::vector<ReWriteConstrain> constrains_;
+            std::vector<ReWriteConstrain> trans_constrains_;
+            //binder
             std::unordered_map<std::string,Pattern*> binder_;
+            //collect the constrains placeholders
+            std::unordered_set<std::string> match_pattern_sets_;
+            std::unordered_set<std::string> substitute_sets_;
     };
 }

@@ -31,6 +31,10 @@ std::unique_ptr<OptimizeResult> Optimizer::BuildPlanTree(
   context_->SetCatalogAccessor(accessor);
   context_->SetStatsStorage(storage);
   context_->SetParams(parameters);
+  /**
+   * for wetune, we need add catalog for rule constrains check
+   */
+  context_->GetRuleSet().SetCatalogAccessor(accessor);
   auto optimize_result = std::make_unique<OptimizeResult>();
 
   // Generate initial operator tree from query tree

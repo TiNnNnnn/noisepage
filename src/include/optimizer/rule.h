@@ -8,6 +8,7 @@
 #include "optimizer/optimization_context.h"
 #include "optimizer/pattern.h"
 #include "optimizer/rules/wetune_parser/parse_stage.h"
+#include "catalog/catalog_accessor.h"
 
 namespace noisepage::optimizer {
 
@@ -212,7 +213,6 @@ class Rule {
    * Match pattern for the rule to be used
    */
   Pattern *match_pattern_;
-
   /**
    * Type of the rule
    */
@@ -306,19 +306,21 @@ class RuleSet {
    */
   std::vector<Rule *> &GetRulesByName(RuleSetName set) { return rules_map_[static_cast<uint32_t>(set)]; }
 
+  void SetCatalogAccessor(catalog::CatalogAccessor *accessor) {accessor_ = accessor;}
+  static catalog::CatalogAccessor* GetCatalogAccessor(){return accessor_;}
+
  private:
   
   void read_wetune_rules(std::unordered_map<int,std::string>& tb_name,std::unordered_map<std::string,Rule*>&wetune_rules);
-
   void write_wetune_rules(std::string tb_name = "wetune_rule");
-
-  //std::unordered_map<std::string,Rule*>wetune_rules_;
 
  private:
   /**
    * Map from RuleSetName (uint32_t) -> vector of rules
    */
   std::unordered_map<uint32_t, std::vector<Rule *>> rules_map_;
+
+  static catalog::CatalogAccessor* accessor_;
 };
 
 

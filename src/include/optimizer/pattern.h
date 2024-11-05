@@ -80,12 +80,14 @@ class Pattern {
     common::ManagedPointer<LogicalRightJoin> right_join_;
     common::ManagedPointer<LogicalFilter> filter_;
     common::ManagedPointer<LogicalSemiJoin> semi_join_;
-    //common::ManagedPointer<LogicalProjection> proj_;
     common::ManagedPointer<LogicalGet> get_;
-
     std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> proj_;
 
-  //std::unordered_map<OpType, NodeVariant> pattern_type_to_node_;
+    struct LogicalLeaf{
+      OpType op;
+    };
+
+    LogicalLeaf leaf_;
 
  private:
   /**

@@ -77,25 +77,27 @@ RuleSet::RuleSet() {
   AddRule(RuleSetName::UNNEST_SUBQUERY, new RewritePullFilterThroughAggregation());
   AddRule(RuleSetName::PREDICATE_PUSH_DOWN, new RewriteUnionWithRecursiveCTE());
 
-  //add logical wetune rules
-  std::unordered_map<std::string,Rule*> wetune_rules;
-  std::unordered_map<int,std::string>file_names;
-  file_names[4] = "wetune_rules";
-  read_wetune_rules(file_names,wetune_rules);
-  for(const auto& r : wetune_rules){
-    AddRule(RuleSetName::LOGICAL_WETUNE,r.second);
+  /**
+   * TODO: move this var into config file
+   */
+  bool USE_WETUNE = false;
+  if(USE_WETUNE){
+    std::unordered_map<std::string,Rule*> wetune_rules;
+    std::unordered_map<int,std::string>file_names;
+    file_names[4] = "wetune_rules";
+    read_wetune_rules(file_names,wetune_rules);
+    for(const auto& r : wetune_rules){
+      AddRule(RuleSetName::LOGICAL_WETUNE,r.second);
+    }
   }
 }
 
 void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,std::unordered_map<std::string,Rule*>&wetune_rules){
     
     for(auto fname : file_names){
-
       std::ifstream file(fname.second);
       //int rule_node_size = fname.first;
-
       ParseStage parse_stage;
-
       if (!file.is_open()) {
         std::cerr << "Failed to open file: " << fname.second << std::endl;
         return;
@@ -118,5 +120,6 @@ void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,
  * in now version,here no used,we just read wetune rule file directly
  */
 void RuleSet::write_wetune_rules(std::string tb_name){}
+catalog::CatalogAccessor* RuleSet::accessor_ = nullptr;
 
 }  // namespace noisepage::optimizer
