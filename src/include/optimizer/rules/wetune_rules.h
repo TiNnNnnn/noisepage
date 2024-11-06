@@ -75,13 +75,16 @@ namespace noisepage::optimizer {
             
         private:
             Pattern* MakePattern(WPattern* p, std::unordered_set<std::string>& sets);
-            bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain) const;
+            
+            bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain,const Pattern* e1 = nullptr, const Pattern* e2 = nullptr) const;
+
             bool BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const;
             std::unique_ptr<AbstractOptimizerNode> BuildRewritePlan(Pattern* p,OptimizationContext *context) const;
             void GetTransConstrains();
             bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
             void BindProjectPattern(Pattern* p) const;
-            void GetRelFromLeaf(Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
+            void GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
+            bool CheckSubPlanEqual(const common::ManagedPointer<AbstractOptimizerNode>& left,const common::ManagedPointer<AbstractOptimizerNode>& right) const;
             
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;

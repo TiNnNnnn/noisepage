@@ -20,6 +20,14 @@ struct TupleHash {
   }
 };
 
+struct PairHash {
+    std::size_t operator()(const std::pair<catalog::table_oid_t, catalog::col_oid_t>& key) const {
+        std::size_t h1 = std::hash<catalog::table_oid_t>()(key.first);
+        std::size_t h2 = std::hash<catalog::col_oid_t>()(key.second);
+        return h1 ^ (h2 << 1);
+    }
+};
+
 /**
  * Class defining a Pattern used for binding
  */
@@ -85,6 +93,7 @@ class Pattern {
 
     struct LogicalLeaf{
       OpType op;
+      common::ManagedPointer<AbstractOptimizerNode> leaf_node_;
     };
 
     LogicalLeaf leaf_;

@@ -56,8 +56,11 @@ namespace noisepage::optimizer {
                 return new_pattern;
             }
 
-            bool WeTuneRule::InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain) const {
+
+
+            bool WeTuneRule::InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain,const Pattern* e1 , const Pattern* e2) const {
                 switch(constrain.type){
+                    case RewriteConstrainType::C_RefAttrs:
                     case RewriteConstrainType::C_Unique:
                     case RewriteConstrainType::C_NotNull:
                     case RewriteConstrainType::C_SubAttrs:
@@ -86,46 +89,6 @@ namespace noisepage::optimizer {
                             }
                         };
 
-                        auto get_rel = [this](const Pattern* p) -> std::pair<catalog::db_oid_t,catalog::table_oid_t> {
-                            if(p->Type() == OpType::LEAF){
-                                auto type = p->leaf_.op;
-                                switch(type){
-                                    case OpType::LOGICALGET:{
-                                        return std::make_pair(p->get_->GetDatabaseOid(),p->get_->GetTableOid());
-                                    }break;
-                                    case OpType::LOGICALFILTER:{
-                                        auto filter_predicates = std::vector<AnnotatedExpression>(p->filter_->GetPredicates());
-                                        auto col_value_expr = dynamic_cast<parser::ColumnValueExpression*>(filter_predicates[0].GetExpr().Get());
-                                        return std::make_pair(col_value_expr->GetDatabaseOid(),col_value_expr->GetTableOid());
-                                    }break;
-                                    case OpType::LOGICALPROJECTION:{
-                                        //it seems like projection not ocurr in logical plan,but here still imple it
-                                        auto e = *(p->proj_.begin());
-                                        return std::make_pair(std::get<2>(e),std::get<1>(e));
-                                    }break;
-                                    case OpType::LOGICALINNERJOIN:{
-
-                                    }break;
-                                    case OpType::LOGICALLEFTJOIN:{
-
-                                    }break;
-                                    case OpType::LOGICALRIGHTJOIN:{
-
-                                    }break;
-                                    case OpType::LOGICALSEMIJOIN:{
-
-                                    }break;
-                                    default:{
-                                        std::cerr<<"intercheck error while get rel with unsupport pattern type"<<std::endl;
-                                        exit(-1);
-                                    }break;
-                                }
-                            }else{
-                                std::cerr<<"intercheck error while get rel with impossible pattern type"<<std::endl;
-                                exit(-1);
-                            }
-                        };
-
                         //check the list of attr if equal
                         if(constrain.type == RewriteConstrainType::C_AttrsEq){
                             auto l_attr = get_attrs(l);
@@ -140,30 +103,39 @@ namespace noisepage::optimizer {
                              * AttrsSub(a,t): if attribute a not found in table's attrs,return false;
                              */
                             auto l_attr = get_attrs(l);
-                            auto r_rel = get_rel(r);
-                            std::unordered_set<catalog::col_oid_t> col_oid_set;
-                            auto ts = RuleSet::GetCatalogAccessor()->GetTableStatistics(r_rel.second);
-                            for(auto cs : ts.GetColumnStats()){
-                                col_oid_set.insert(cs->GetColumnID());
+                            std::unordered_set<noisepage::catalog::table_oid_t> tb_oid_set;
+                            GetRelFromLeaf(l,tb_oid_set);
+
+                            std::unordered_set<std::pair<catalog::table_oid_t,catalog::col_oid_t>,PairHash> col_oid_set;
+                            //get all schemas
+                            for(auto rel : tb_oid_set){
+                                auto sc = RuleSet::GetCatalogAccessor()->GetSchema(rel);
+                                for(auto cs : sc.GetColumns()){
+                                    col_oid_set.insert(std::make_pair(rel,cs.Oid()));
+                                }
                             }
                             for(auto a : l_attr){
-                                if(col_oid_set.find(std::get<0>(a)) == col_oid_set.end())return false;
+                                if(col_oid_set.find(std::make_pair(std::get<1>(a),std::get<0>(a))) == col_oid_set.end())return false;
                             }
                             return true;
                         }else if(constrain.type == RewriteConstrainType::C_NotNull){
                             /**
                              * NotNull(t0,a0): from catalog
                              */
-                            auto l_rel =get_rel(l);
+                            std::unordered_set<noisepage::catalog::table_oid_t> tb_oid_set;
+                            GetRelFromLeaf(l,tb_oid_set);
                             auto r_attr = get_attrs(r);
 
-                            std::unordered_map<catalog::col_oid_t,bool> col_oid_set;
-                            auto sc = RuleSet::GetCatalogAccessor()->GetSchema(l_rel.second);
-                            for(auto cs : sc.GetColumns()){
-                                col_oid_set[cs.Oid()] = cs.Nullable();
+                            std::unordered_map<std::pair<catalog::table_oid_t,catalog::col_oid_t>,bool,PairHash> col_oid_set;
+                            //get all schemas
+                            for(auto rel : tb_oid_set){
+                                auto sc = RuleSet::GetCatalogAccessor()->GetSchema(rel);
+                                for(auto cs : sc.GetColumns()){
+                                    col_oid_set[std::make_pair(rel,cs.Oid())] = cs.Nullable();
+                                }
                             }
                             for(auto a : r_attr){
-                                auto iter = col_oid_set.find(std::get<0>(a));
+                                auto iter = col_oid_set.find(std::make_pair(std::get<1>(a),std::get<0>(a)));
                                 if(iter == col_oid_set.end())return false;
                                 if(iter->second)return false;
                             }
@@ -172,20 +144,53 @@ namespace noisepage::optimizer {
                             /** 
                              * Unique(t,a)
                              */
-                            auto l_rel =get_rel(l);
+                            //auto l_rel =get_rel(l);
+                            std::unordered_set<noisepage::catalog::table_oid_t> tb_oid_set;
+                            GetRelFromLeaf(l,tb_oid_set);
                             auto r_attr = get_attrs(r);
-                            auto sc = RuleSet::GetCatalogAccessor()->GetSchema(l_rel.second);
-                            auto idxs = RuleSet::GetCatalogAccessor()->GetIndexes(l_rel.second);
+
+                            std::vector<catalog::Schema> scs;
+                            std::vector<catalog::IndexSchema> idx_scs;
+                            for(auto rel : tb_oid_set){
+                                scs.push_back(RuleSet::GetCatalogAccessor()->GetSchema(rel));
+                                for(auto idx : RuleSet::GetCatalogAccessor()->GetIndexes(rel)){
+                                    idx_scs.push_back(idx.second);
+                                }
+                            }
+
                             for(auto attr : r_attr){
-                                for(auto idx: idxs){
-                                    auto idx_schema = idx.second;
-                                    if(idx_schema.GetColumns().size() == 1 && idx_schema.GetColumn(0).Name() == sc.GetColumn(std::get<0>(attr)).Name()){
+                                for(const auto& idx_schema: idx_scs){
+                                    //for col with unique , it will has a index 
+                                    if(idx_schema.GetIndexedColOids().size() == 1){
+                                        bool found = false;
+                                        for(const auto& sc : scs){
+                                            if(sc.GetColumn(std::get<0>(attr)).Name() == idx_schema.GetColumn(0).Name()){
+                                                found = true;
+                                                break;
+                                            }
+                                        }
+                                        if(!found)return false;
                                         if(idx_schema.Unique()){
                                             return true;
                                         }
                                     }
                                 }
                             }
+                            return false;
+                        }else if(constrain.type == RewriteConstrainType::C_RefAttrs){
+                            auto l_attr = get_attrs(r);
+                            auto r_attr = get_attrs(e2);
+                            std::unordered_set<noisepage::catalog::table_oid_t> left_tb_oid_set;
+                            GetRelFromLeaf(l,left_tb_oid_set);
+                            std::unordered_set<noisepage::catalog::table_oid_t> right_tb_oid_set;
+                            GetRelFromLeaf(e1,left_tb_oid_set);
+                            
+                            /**
+                             * FIXME: implement ref attrs
+                             */
+                            
+
+                        }else{
                             return false;
                         }
                     }break;
@@ -242,23 +247,8 @@ namespace noisepage::optimizer {
                          * TableEq(t_x,t_y): it seems like 't' only ocurr on Input<t>, no matter the shape of the sub plan, it need 
                          * a output based on a single output 
                          */
-                        auto get_rel = [this](const Pattern* p) -> std::tuple<catalog::db_oid_t,catalog::table_oid_t,common::ManagedPointer<AbstractOptimizerNode>&sub_plan> {
-                            assert(p->Type() == OpType::LEAF);
-                            auto t = p->leaf_.op;
-                            switch(t){
-                                
-                            }
-                            return std::make_pair(catalog::INVALID_DATABASE_OID,catalog::INVALID_TABLE_OID);
-                        };
-
-
-
-                        // auto l_rel = get_rel(l);
-                        // auto r_rel = get_rel(r);
-                        // if(l_rel.first != r_rel.first || l_rel.second != r_rel.second || l_rel.first != catalog::INVALID_DATABASE_OID){
-                        //     return false;
-                        // }
-                        // return true;                        
+                        if(l->leaf_.op != r->leaf_.op)return false;
+                        return CheckSubPlanEqual(l->leaf_.leaf_node_,r->leaf_.leaf_node_);             
                     }break;
                     default:{
                         return false;
@@ -318,30 +308,7 @@ namespace noisepage::optimizer {
                     }break;
                     case OpType::LEAF:{
                         pattern->leaf_.op = plan->Contents()->GetOpType();
-                        switch(pattern->leaf_.op){
-                            case OpType::LOGICALINNERJOIN:{
-                            pattern->inner_join_ = plan->Contents()->GetContentsAs<LogicalInnerJoin>();
-                            }break;
-                            case OpType::LOGICALLEFTJOIN:{
-                                pattern->left_join_ = plan->Contents()->GetContentsAs<LogicalLeftJoin>();
-                            }break;
-                            case OpType::LOGICALRIGHTJOIN:{
-                                pattern->right_join_ = plan->Contents()->GetContentsAs<LogicalRightJoin>();
-                            }break;
-                            case OpType::LOGICALFILTER:{
-                                pattern->filter_ = plan->Contents()->GetContentsAs<LogicalFilter>();
-                            }break;
-                            case OpType::LOGICALSEMIJOIN:{
-                                pattern->semi_join_ = plan->Contents()->GetContentsAs<LogicalSemiJoin>();
-                            }break;
-                            case OpType::LOGICALGET:{
-                                pattern->get_ = plan->Contents()->GetContentsAs<LogicalGet>();
-                            }break;
-                            default:{
-                                std::cerr<<"leaf pattern not support this type:"<< std::to_string(int(pattern->leaf_.op))<<std::endl;
-                                exit(-1);
-                            }
-                        }
+                        pattern->leaf_.leaf_node_ = plan;
                     }break;
                     default:{
                         std::cerr<<"error type"<<std::endl;
@@ -612,10 +579,14 @@ namespace noisepage::optimizer {
                 }
             }
 
-            void WeTuneRule::GetRelFromLeaf(Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const{
+            void WeTuneRule::GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const{
+                /**
+                 * FIXME: leaf node type is multi
+                 */
                 switch(sub_plan->leaf_.op){
                     case OpType::LOGICALGET:{
-                        tb_oid_set.insert(sub_plan->get_->GetTableOid());
+                        auto tb_oid = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalGet>()->GetTableOid();
+                        tb_oid_set.insert(tb_oid);
                     }break;
                     case OpType::LOGICALFILTER:{
                         auto filter_predicates = std::vector<AnnotatedExpression>(sub_plan->filter_->GetPredicates());
@@ -774,6 +745,114 @@ namespace noisepage::optimizer {
                 return attrs;
             }
 
+            bool WeTuneRule::CheckSubPlanEqual(const common::ManagedPointer<AbstractOptimizerNode>& left,const common::ManagedPointer<AbstractOptimizerNode>& right) const{
+                if(left == nullptr && right == nullptr)return true;
+                if(left == nullptr || right == nullptr)return false;
+                if(left->Contents()->GetOpType() != right->Contents()->GetOpType())return false;
 
-
+                bool res = false;
+                switch(left->Contents()->GetOpType()){
+                    case OpType::LOGICALINNERJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalInnerJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalInnerJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);
+                    }break;
+                    case OpType::LOGICALLEFTJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalLeftJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalLeftJoin>();
+                        if(*l != *r)return false; 
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);
+                    }break;
+                    case OpType::LOGICALRIGHTJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalRightJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalRightJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);
+                    }break;              
+                    case OpType::LOGICALSEMIJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalSemiJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalSemiJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);
+                    }break;
+                    case OpType::LOGICALMARKJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalMarkJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalMarkJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);                        
+                    }break;
+                    case OpType::LOGICALOUTERJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalOuterJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalOuterJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);                        
+                    }break;
+                    case OpType::LOGICALSINGLEJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalSingleJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalSingleJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);                        
+                    }break;
+                    case OpType::LOGICALDEPENDENTJOIN: {
+                        auto l = left->Contents()->GetContentsAs<LogicalDependentJoin>();
+                        auto r = left->Contents()->GetContentsAs<LogicalDependentJoin>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]) && CheckSubPlanEqual(left->GetChildren()[1],right->GetChildren()[1]);                        
+                    }break;
+                    case OpType::LOGICALAGGREGATEANDGROUPBY:{
+                        auto l = left->Contents()->GetContentsAs<LogicalAggregateAndGroupBy>();
+                        auto r = left->Contents()->GetContentsAs<LogicalAggregateAndGroupBy>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                                                
+                    }break;
+                    case OpType::LOGICALFILTER:{
+                        auto l = left->Contents()->GetContentsAs<LogicalFilter>();
+                        auto r = left->Contents()->GetContentsAs<LogicalFilter>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                              
+                    }break;
+                    case OpType::LOGICALEXTERNALFILEGET:{
+                        auto l = left->Contents()->GetContentsAs<LogicalExternalFileGet>();
+                        auto r = left->Contents()->GetContentsAs<LogicalExternalFileGet>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                          
+                    }break;
+                    case OpType::LOGICALGET:{
+                        auto l = left->Contents()->GetContentsAs<LogicalGet>();
+                        auto r = left->Contents()->GetContentsAs<LogicalGet>();
+                        if(*l != *r)return false;
+                        res = true;                  
+                    }break;
+                    case OpType::LOGICALUNION:{
+                        auto l = left->Contents()->GetContentsAs<LogicalUnion>();
+                        auto r = left->Contents()->GetContentsAs<LogicalUnion>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                                   
+                    }break;
+                    case OpType::LOGICALLIMIT:{
+                        auto l = left->Contents()->GetContentsAs<LogicalLimit>();
+                        auto r = left->Contents()->GetContentsAs<LogicalLimit>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                                   
+                    }break;
+                    case OpType::LOGICALPROJECTION:{
+                        auto l = left->Contents()->GetContentsAs<LogicalProjection>();
+                        auto r = left->Contents()->GetContentsAs<LogicalProjection>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);           
+                    }break;
+                    case OpType::LOGICALQUERYDERIVEDGET:{
+                        auto l = left->Contents()->GetContentsAs<LogicalQueryDerivedGet>();
+                        auto r = left->Contents()->GetContentsAs<LogicalQueryDerivedGet>();
+                        if(*l != *r)return false;
+                        res = CheckSubPlanEqual(left->GetChildren()[0],right->GetChildren()[0]);                         
+                    }break;
+                    default:{
+                        std::cerr<<"error typr while check sub plan equality"<<std::endl;
+                        exit(-1);
+                    }
+                }
+                return res;
+            }
 }
