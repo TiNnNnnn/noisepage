@@ -41,21 +41,27 @@ namespace noisepage::optimizer {
                 BindProjectPattern(match_pattern_);
                 //check the constrains
                 for(auto constrain : constrains_){
-                    if(constrain.placeholders.size() != 2){
+                    if(constrain.placeholders.size() != 2 || constrain.placeholders.size() != 4){
                         std::cerr<<"bad wetune rule constrain placeholder size: "<<constrain.placeholders.size()<<std::endl;
                         return false;
                     }
                     if(binder_.find(constrain.placeholders[0]) == binder_.end())return false;
                     if(binder_.find(constrain.placeholders[1]) == binder_.end())return false;
-                    
-                    std::string l = constrain.placeholders[0];
-                    std::string r = constrain.placeholders[1];
-                    auto l_pattern = binder_.at(l);
-                    auto r_pattern = binder_.at(r);
+                    if(constrain.type != RewriteConstrainType::C_RefAttrs){
+                        std::string l = constrain.placeholders[0];
+                        std::string r = constrain.placeholders[1];
+                        auto l_pattern = binder_.at(l);
+                        auto r_pattern = binder_.at(r);
 
-                    if(!InternalCheck(l_pattern,r_pattern,constrain)){
-                        return false;
+                        if(!InternalCheck(l_pattern,r_pattern,constrain)){
+                            return false;
+                        }
+                    }else{
+                        if(binder_.find(constrain.placeholders[2]) == binder_.end())return false;
+                        if(binder_.find(constrain.placeholders[3]) == binder_.end())return false;
+
                     }
+
                 }
                 return true;
             }
@@ -75,6 +81,7 @@ namespace noisepage::optimizer {
             void GetTransConstrains();
             bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
             void BindProjectPattern(Pattern* p) const;
+            void GetRelFromLeaf(Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
             
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;

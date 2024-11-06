@@ -20,6 +20,7 @@ enum RewriteConstrainType{
     C_SchemaEq,
     C_Unique,
     C_NotNull,
+    C_RefAttrs,
 };
 
 struct ReWriteConstrain{

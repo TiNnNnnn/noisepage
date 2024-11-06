@@ -149,7 +149,7 @@ TABLEEQ                                 RETURN_TOKEN(TABLEEQ);
 ATTRSEQ                                 RETURN_TOKEN(ATTRSEQ);
 PREDICATEEQ                             RETURN_TOKEN(PREDICATEEQ);
 ATTRSSUB                                RETURN_TOKEN(ATTRSSUB);
-REFATTRS                                RETURN_TOKEN(REFATTRS);
+REFERENCE                               RETURN_TOKEN(REFERENCE);
 NOTNULL                                 RETURN_TOKEN(NOTNULL);
 
 

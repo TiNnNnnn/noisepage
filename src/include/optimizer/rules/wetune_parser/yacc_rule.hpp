@@ -119,7 +119,7 @@ extern int yydebug;
     PREDICATEEQ = 325,
     SCHEMAEQ = 326,
     ATTRSSUB = 327,
-    REFATTRS = 328,
+    REFERENCE = 328,
     NOTNULL = 329,
     LEFTJOIN = 330,
     RIGHTJOIN = 331,

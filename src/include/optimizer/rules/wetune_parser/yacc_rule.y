@@ -110,7 +110,7 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
         PREDICATEEQ
         SCHEMAEQ                             
         ATTRSSUB                                
-        REFATTRS                                
+        REFERENCE                                
         NOTNULL
 
         LEFTJOIN
@@ -210,6 +210,15 @@ constrain:
     $$->type = RewriteConstrainType::C_Unique;
     $$->placeholders.push_back($3);
     $$->placeholders.push_back($5);
+  }
+  | REFERENCE LBRACE ID COMMA ID COMMA ID COMMA ID RBRACE
+  {
+    $$ = new ReWriteConstrain();
+    $$->type = RewriteConstrainType::C_RefAttrs;
+    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
+    $$->placeholders.push_back($7);
+    $$->placeholders.push_back($9);
   }
   ;
 
