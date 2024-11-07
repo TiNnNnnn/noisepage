@@ -28,6 +28,12 @@ struct PairHash {
     }
 };
 
+struct SchemaHash {
+    std::size_t operator()(const catalog::Schema sc) const {
+        return sc.Hash();
+    }
+};
+
 /**
  * Class defining a Pattern used for binding
  */
@@ -80,7 +86,6 @@ class Pattern {
    */
   OpType Type() const { return type_; }
 
-
  public:
 
     common::ManagedPointer<LogicalInnerJoin> inner_join_;
@@ -89,8 +94,8 @@ class Pattern {
     common::ManagedPointer<LogicalFilter> filter_;
     common::ManagedPointer<LogicalSemiJoin> semi_join_;
     common::ManagedPointer<LogicalGet> get_;
-    std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> proj_;
-
+    common::ManagedPointer<LogicalProjection> proj_;
+  
     struct LogicalLeaf{
       OpType op;
       common::ManagedPointer<AbstractOptimizerNode> leaf_node_;

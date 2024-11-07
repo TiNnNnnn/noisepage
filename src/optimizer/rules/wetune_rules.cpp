@@ -56,8 +56,6 @@ namespace noisepage::optimizer {
                 return new_pattern;
             }
 
-
-
             bool WeTuneRule::InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain,const Pattern* e1 , const Pattern* e2) const {
                 switch(constrain.type){
                     case RewriteConstrainType::C_RefAttrs:
@@ -83,7 +81,8 @@ namespace noisepage::optimizer {
                                 auto filter_predicates = std::vector<AnnotatedExpression>(p->semi_join_->GetJoinPredicates());
                                 return GetJoinAttrs(filter_predicates,p,constrain);
                             }else if (p->Type() == OpType::LOGICALPROJECTION){
-                                return p->proj_;
+                                auto exprs = p->proj_->GetExpressions();
+                                return GetProjAttrs(exprs,p);
                             }else{
                                 return std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash>();
                             }
@@ -144,7 +143,6 @@ namespace noisepage::optimizer {
                             /** 
                              * Unique(t,a)
                              */
-                            //auto l_rel =get_rel(l);
                             std::unordered_set<noisepage::catalog::table_oid_t> tb_oid_set;
                             GetRelFromLeaf(l,tb_oid_set);
                             auto r_attr = get_attrs(r);
@@ -178,18 +176,23 @@ namespace noisepage::optimizer {
                             }
                             return false;
                         }else if(constrain.type == RewriteConstrainType::C_RefAttrs){
-                            auto l_attr = get_attrs(r);
-                            auto r_attr = get_attrs(e2);
+                            auto l_attrs = get_attrs(r);
+                            auto r_attrs = get_attrs(e2);
                             std::unordered_set<noisepage::catalog::table_oid_t> left_tb_oid_set;
                             GetRelFromLeaf(l,left_tb_oid_set);
                             std::unordered_set<noisepage::catalog::table_oid_t> right_tb_oid_set;
                             GetRelFromLeaf(e1,left_tb_oid_set);
                             
-                            /**
-                             * FIXME: implement ref attrs
-                             */
-                            
+                           if(left_tb_oid_set.size() != right_tb_oid_set.size())return false;
+                           if(l_attrs.size() != r_attrs.size())return false;
 
+                           for(auto oid : left_tb_oid_set){
+                                if(right_tb_oid_set.find(oid) == right_tb_oid_set.end())return false;
+                           }
+                           for(auto attr : l_attrs){
+                                if(r_attrs.find(attr) == r_attrs.end())return false;
+                           }                            
+                           return true;
                         }else{
                             return false;
                         }
@@ -226,20 +229,31 @@ namespace noisepage::optimizer {
                     }break;
                     case RewriteConstrainType::C_SchemaEq :{
                         /**
-                         * SchemaEq(s_x,s_y): it seems like it only ocurr on Proj<a,s> ,and not used while checking ,but transformer
+                         * SchemaEq(s_x,s_y): it seems like it only ocurr on Proj<a,s>
+                         * 1. it always not used while checking ,but transformer
+                         * 2. s may contains more than 1 relations, a may contains more than 1 attrs
                          */
                         auto get_schema = [this](const Pattern* p) -> std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> {
                             if(p->Type() == OpType::LOGICALPROJECTION){
-                                return p->proj_;
+                                auto exprs = p->proj_->GetExpressions();
+                                return GetProjAttrs(exprs,p);
                             }
                             return std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash>();
                         };
-
-                        auto l_schema = get_schema(l);
-                        auto r_schema = get_schema(r);
-                        auto l_sc = RuleSet::GetCatalogAccessor()->GetSchema(std::get<1>(*l_schema.begin()));
-                        auto r_sc = RuleSet::GetCatalogAccessor()->GetSchema(std::get<1>(*r_schema.begin()));
-                        if(l_sc != r_sc)return false;
+                        std::unordered_set<catalog::Schema,SchemaHash> ls_set;
+                        for(const auto& s : get_schema(l)){
+                            auto l_sc = RuleSet::GetCatalogAccessor()->GetSchema(std::get<1>(s));
+                            ls_set.insert(l_sc);
+                        }
+                        std::unordered_set<catalog::Schema,SchemaHash> rs_set;
+                        for(auto s: get_schema(r)){
+                            auto r_sc = RuleSet::GetCatalogAccessor()->GetSchema(std::get<1>(s));
+                            ls_set.insert(r_sc);
+                        }
+                        if(ls_set.size() != rs_set.size()) return false;
+                        for(const auto& le : ls_set){
+                            if(rs_set.find(le) == rs_set.end())return false;
+                        }
                         return true;
                     }break;
                     case RewriteConstrainType::C_RelEq:{
@@ -257,30 +271,18 @@ namespace noisepage::optimizer {
                 return true;
             }
 
+        
             bool WeTuneRule::BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const {
-                if(pattern == nullptr)return true;
-                if(pattern->Type() != plan->Contents()->GetOpType() && pattern->Type() != OpType::LOGICALPROJECTION){
+                if(pattern == nullptr && plan == nullptr)return true;
+                if(pattern == nullptr || plan == nullptr)return false;
+                if(pattern->Type() != plan->Contents()->GetOpType()){
                     return false;
                 }
-                //if the rule root is projection,we need skip the pattern and try meet its chilid
-                if(pattern->Type() == OpType::LOGICALPROJECTION){
-                    pattern = pattern->Children()[0];
-                }
+
                 bool ret = true;
                 for(size_t i=0;i<pattern->Children().size();i++){
                     auto child = pattern->Children()[i];
-                    if(child->Type() == OpType::LOGICALPROJECTION){
-                        /**
-                         * 1. while meet the project pattern, we need special handling.
-                         * we directly skip the projection pattern to match its grandson pattern, 
-                         * inlcudes filter, join, input. 
-                         * 2. proj pattern has no plan contents
-                         * 3. through anayle the project pattern's father and son,we can know its attr
-                         */
-                        ret &= BindPatternToPlan(plan->GetChildren()[i],child->Children()[0]);
-                    }else{
-                        ret &= BindPatternToPlan(plan->GetChildren()[i],child);
-                    }
+                    ret &= BindPatternToPlan(plan->GetChildren()[i],child);
                 }
 
                 pattern->SetContents(plan->Contents());
@@ -301,10 +303,7 @@ namespace noisepage::optimizer {
                         pattern->semi_join_ = plan->Contents()->GetContentsAs<LogicalSemiJoin>();
                     }break;
                     case OpType::LOGICALPROJECTION:{
-                        /**
-                         * TODO: 11-05,here is a problem,if rule root pattern type is Projection, should
-                         * it allowed to exist? now, we directly think it can't exist in the real plan
-                         */
+                       pattern->proj_ = plan->Contents()->GetContentsAs<LogicalProjection>();
                     }break;
                     case OpType::LEAF:{
                         pattern->leaf_.op = plan->Contents()->GetOpType();
@@ -340,11 +339,22 @@ namespace noisepage::optimizer {
                                 //do nothing
                             }
                         }
+
                         std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-                        auto left_child = BuildRewritePlan(p->Children()[0],context);
-                        auto right_child = BuildRewritePlan(p->Children()[1],context);
-                        c.push_back(std::move(left_child));
-                        c.push_back(std::move(right_child));
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto left_child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(left_child));
+                        }
+                        
+                        if(p->Children()[1]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[1]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto right_child = BuildRewritePlan(p->Children()[1],context);
+                            c.push_back(std::move(right_child));
+                        }
+
                         return  std::make_unique<OperatorNode>(LogicalInnerJoin::Make(std::move(join_predicates))
                                                      .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                                  std::move(c), context->GetOptimizerContext()->GetTxn());
@@ -359,11 +369,22 @@ namespace noisepage::optimizer {
                                 //do nothing
                             }
                         }
+
                         std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-                        auto left_child = BuildRewritePlan(p->Children()[0],context);
-                        auto right_child = BuildRewritePlan(p->Children()[1],context);
-                        c.push_back(std::move(left_child));
-                        c.push_back(std::move(right_child));
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto left_child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(left_child));
+                        }
+                        
+                        if(p->Children()[1]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[1]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto right_child = BuildRewritePlan(p->Children()[1],context);
+                            c.push_back(std::move(right_child));
+                        }
+
                         return  std::make_unique<OperatorNode>(LogicalLeftJoin::Make(std::move(join_predicates))
                                                      .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                                  std::move(c), context->GetOptimizerContext()->GetTxn());
@@ -378,11 +399,22 @@ namespace noisepage::optimizer {
                                 //do nothing
                             }
                         }
+
                         std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-                        auto left_child = BuildRewritePlan(p->Children()[0],context);
-                        auto right_child = BuildRewritePlan(p->Children()[1],context);
-                        c.push_back(std::move(left_child));
-                        c.push_back(std::move(right_child));
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto left_child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(left_child));
+                        }
+                        
+                        if(p->Children()[1]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[1]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto right_child = BuildRewritePlan(p->Children()[1],context);
+                            c.push_back(std::move(right_child));
+                        }
+
                         return  std::make_unique<OperatorNode>(LogicalRightJoin::Make(std::move(join_predicates))
                                                      .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                                  std::move(c), context->GetOptimizerContext()->GetTxn());
@@ -400,9 +432,15 @@ namespace noisepage::optimizer {
                                 //nothing to do
                             }
                         }
-                        auto child = BuildRewritePlan(p->Children()[0],context);
+
                         std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-                        c.push_back(std::move(child));
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(child));
+                        }
+
                         return std::make_unique<OperatorNode>(LogicalFilter::Make(std::move(predicates))
                                                   .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                               std::move(c), context->GetOptimizerContext()->GetTxn());
@@ -417,40 +455,51 @@ namespace noisepage::optimizer {
                                 //do nothing
                             }
                         }
+
                         std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
-                        auto left_child = BuildRewritePlan(p->Children()[0],context);
-                        auto right_child = BuildRewritePlan(p->Children()[1],context);
-                        c.push_back(std::move(left_child));
-                        c.push_back(std::move(right_child));
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto left_child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(left_child));
+                        }
+                        
+                        if(p->Children()[1]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[1]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto right_child = BuildRewritePlan(p->Children()[1],context);
+                            c.push_back(std::move(right_child));
+                        }
                         return  std::make_unique<OperatorNode>(LogicalSemiJoin::Make(std::move(join_predicates))
                                                      .RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),
                                                  std::move(c), context->GetOptimizerContext()->GetTxn());                        
                     }break;
                     case OpType::LOGICALPROJECTION:{
-                        //we should skip the project pattern,it should not occur in plan (except root node)
-                        return BuildRewritePlan(p->Children()[0],context);
-                    }break;
-                    case OpType::LOGICALGET:{
-                        std::vector<AnnotatedExpression> scan_predicates;
-                        catalog::db_oid_t db_oid;
-                        catalog::table_oid_t tb_oid;
-                        parser::AliasType tb_alias;
-                        for(const  auto &c : constrains){
+                        std::vector<planner::IndexExpression> expressions;
+                        for(const auto &c : constrains){
                             auto l_pattern = binder_.at(c.placeholders[1]);
-                            if(c.type == RewriteConstrainType::C_RelEq){
-                                db_oid = l_pattern->get_->GetDatabaseOid();
-                                tb_oid = l_pattern->get_->GetTableOid();
-                                tb_alias = l_pattern->get_->GetTableAlias();
-                            }else if(c.type == RewriteConstrainType::C_AttrsEq){
-                                
+                            if(c.type == RewriteConstrainType::C_SchemaEq){
+                                /**
+                                 * FIXME: implement
+                                 */
+                                expressions = l_pattern->proj_->GetExpressions();
                             }
                         }
-                        return std::make_unique<OperatorNode>(LogicalGet::Make(db_oid,tb_oid,scan_predicates,tb_alias,false));
+                        std::vector<std::unique_ptr<AbstractOptimizerNode>> c;
+                        if(p->Children()[0]->Type() == OpType::LEAF){
+                            c.emplace_back(std::move(p->Children()[0]->leaf_.leaf_node_.Get()));
+                        }else{
+                            auto child = BuildRewritePlan(p->Children()[0],context);
+                            c.push_back(std::move(child));
+                        }
+                        return std::make_unique<OperatorNode>(LogicalProjection::Make(std::move(expressions)).RegisterWithTxnContext(context->GetOptimizerContext()->GetTxn()),std::move(c), context->GetOptimizerContext()->GetTxn());
                     }break;
                     default:{
                         std::cerr<<"error type"<<std::endl;
+                        exit(-1);
                     }
                 }
+                return nullptr;
             }
 
             void WeTuneRule::GetTransConstrains(){
@@ -474,7 +523,6 @@ namespace noisepage::optimizer {
             }
 
             bool WeTuneRule::CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const {    
-                //std::unordered_set<AnnotatedExpression,ExprHasher> l;
                 ExprSet l_set;
                 ExprSet r_set;
                 for(auto e: l)l_set.insert(e.GetExpr());
@@ -485,121 +533,36 @@ namespace noisepage::optimizer {
                 return true; 
             }
 
-            void WeTuneRule::BindProjectPattern(Pattern* p) const{
-                if(p == nullptr)return;
-                /**
-                 * FIXME: while projection pattern is root 
-                 */
-                for(size_t i=0;i<p->Children().size();i++){
-                    auto child = p->Children()[i];
-                    if(child->Type() == OpType::LOGICALPROJECTION){
-                        auto grandson = child->Children()[0];
-                        std::unordered_set<catalog::table_oid_t> tb_oid_set;
-                        switch(grandson->Type()){
-                            case OpType::LOGICALFILTER:{
-                                auto preds = grandson->filter_->GetPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                auto e = dynamic_cast<parser::ColumnValueExpression*>((*col_set.begin()).Get());
-                                tb_oid_set.insert(e->GetTableOid());
-                            }break;
-                            case OpType::LOGICALRIGHTJOIN:
-                            case OpType::LOGICALLEFTJOIN:
-                            case OpType::LOGICALINNERJOIN:{
-                                std::vector<AnnotatedExpression> preds; 
-                                if(grandson->Type() == OpType::LOGICALINNERJOIN){
-                                    preds = grandson->inner_join_->GetJoinPredicates();
-                                }else if(grandson->Type() == OpType::LOGICALLEFTJOIN){
-                                    preds = grandson->left_join_->GetJoinPredicates();
-                                }else{
-                                    preds = grandson->right_join_->GetJoinPredicates();
-                                }
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    tb_oid_set.insert(e->GetTableOid());    
-                                }
-                            }break;
-                            case OpType::LEAF:{
-                                //tb_oid_set.insert(p->Children()[0]->get_->GetTableOid());
-                                GetRelFromLeaf(grandson,tb_oid_set);
-                            case OpType::LOGICALSEMIJOIN:{
-                                auto preds = grandson->semi_join_->GetJoinPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    tb_oid_set.insert(e->GetTableOid());    
-                                }
-                            }
-                            }break;
-                            default:{
-                                std::cerr<<"bad type of join grandson pattern"<<std::endl;
-                            }
-                        }
-                        switch(p->Type()){
-                            case OpType::LOGICALRIGHTJOIN:
-                            case OpType::LOGICALLEFTJOIN:
-                            case OpType::LOGICALINNERJOIN:{
-                               std::vector<AnnotatedExpression> preds; 
-                                if(grandson->Type() == OpType::LOGICALINNERJOIN){
-                                    preds = grandson->inner_join_->GetJoinPredicates();
-                                }else if(grandson->Type() == OpType::LOGICALLEFTJOIN){
-                                    preds = grandson->left_join_->GetJoinPredicates();
-                                }else{
-                                    preds = grandson->right_join_->GetJoinPredicates();
-                                }
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    if(tb_oid_set.find(e->GetTableOid())!=tb_oid_set.end()){
-                                        child->proj_.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
-                                    } 
-                                }
-                            }break;
-                            case OpType::LOGICALSEMIJOIN:{
-                                std::vector<AnnotatedExpression> preds = grandson->semi_join_->GetJoinPredicates();
-                                ExprSet col_set;
-                                parser::ExpressionUtil::GetTupleValueExprs(&col_set,preds[0].GetExpr());
-                                for(auto& col_expr: col_set){
-                                    auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
-                                    if(tb_oid_set.find(e->GetTableOid())!=tb_oid_set.end()){
-                                        child->proj_.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));
-                                    } 
-                                }
-                            }break;
-                            default:{
-                                std::cerr<<"bad type of join grandson pattern"<<std::endl;
-                            }
-                        }
-                    }
-                    BindProjectPattern(p->Children()[i]);
+            void WeTuneRule::GetRelFromProj(const Pattern* plan, std::unordered_set<catalog::table_oid_t>& tb_oid_set) const{
+                auto exprs = plan->proj_->GetExpressions();
+                auto col_set = GetProjAttrs(exprs,plan);
+                for(const auto& col : col_set){
+                    tb_oid_set.insert(std::get<1>(col));
                 }
             }
 
             void WeTuneRule::GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const{
-                /**
-                 * FIXME: leaf node type is multi
-                 */
                 switch(sub_plan->leaf_.op){
                     case OpType::LOGICALGET:{
                         auto tb_oid = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalGet>()->GetTableOid();
                         tb_oid_set.insert(tb_oid);
                     }break;
                     case OpType::LOGICALFILTER:{
-                        auto filter_predicates = std::vector<AnnotatedExpression>(sub_plan->filter_->GetPredicates());
+                        auto preds = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalFilter>()->GetPredicates();
+                        auto filter_predicates = std::vector<AnnotatedExpression>(preds);
                         auto col_value_expr = dynamic_cast<parser::ColumnValueExpression*>(filter_predicates[0].GetExpr().Get());
-                        tb_oid_set.insert(sub_plan->get_->GetTableOid());
+                        tb_oid_set.insert(col_value_expr->GetTableOid());
                     }break;
                     case OpType::LOGICALPROJECTION:{
-                        //it seems like projection not ocurr in logical plan,but here still imple it
-                        auto e = *(sub_plan->proj_.begin());
-                        tb_oid_set.insert(sub_plan->get_->GetTableOid());
+                        auto exprs = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalProjection>()->GetExpressions();
+                        auto col_set = GetProjAttrs(exprs,sub_plan);
+                        for(const auto& col : col_set){
+                            tb_oid_set.insert(std::get<1>(col));
+                        }
                     }break;
                     case OpType::LOGICALINNERJOIN:{
-                        auto join_preds = std::vector<AnnotatedExpression>(sub_plan->inner_join_->GetJoinPredicates());
+                        auto preds = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalInnerJoin>()->GetJoinPredicates();
+                        auto join_preds = std::vector<AnnotatedExpression>(preds);
                         ExprSet col_set;
                         parser::ExpressionUtil::GetTupleValueExprs(&col_set,join_preds[0].GetExpr());
                         for(auto& col_expr: col_set){
@@ -608,7 +571,8 @@ namespace noisepage::optimizer {
                         }
                     }break;
                     case OpType::LOGICALLEFTJOIN:{
-                        auto join_preds = std::vector<AnnotatedExpression>(sub_plan->left_join_->GetJoinPredicates());
+                        auto preds = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalLeftJoin>()->GetJoinPredicates();
+                        auto join_preds = std::vector<AnnotatedExpression>(preds);
                         ExprSet col_set;
                         parser::ExpressionUtil::GetTupleValueExprs(&col_set,join_preds[0].GetExpr());
                         for(auto& col_expr: col_set){
@@ -617,7 +581,8 @@ namespace noisepage::optimizer {
                         }
                     }break;
                     case OpType::LOGICALRIGHTJOIN:{
-                        auto join_preds = std::vector<AnnotatedExpression>(sub_plan->right_join_->GetJoinPredicates());
+                        auto preds = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalRightJoin>()->GetJoinPredicates();
+                        auto join_preds = std::vector<AnnotatedExpression>(preds);
                         ExprSet col_set;
                         parser::ExpressionUtil::GetTupleValueExprs(&col_set,join_preds[0].GetExpr());
                         for(auto& col_expr: col_set){
@@ -626,7 +591,8 @@ namespace noisepage::optimizer {
                         }
                     }break;
                     case OpType::LOGICALSEMIJOIN:{
-                        auto join_preds = std::vector<AnnotatedExpression>(sub_plan->semi_join_->GetJoinPredicates());
+                        auto preds = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalSemiJoin>()->GetJoinPredicates();
+                        auto join_preds = std::vector<AnnotatedExpression>(preds);
                         ExprSet col_set;
                         parser::ExpressionUtil::GetTupleValueExprs(&col_set,join_preds[0].GetExpr());
                         for(auto& col_expr: col_set){
@@ -634,6 +600,13 @@ namespace noisepage::optimizer {
                             tb_oid_set.insert(e->GetTableOid());    
                         }
                     }break;
+                    case OpType::LOGICALAGGREGATEANDGROUPBY:{
+                        auto exprs = sub_plan->leaf_.leaf_node_->Contents()->GetContentsAs<LogicalAggregateAndGroupBy>()->GetColumns();
+                        /**
+                         * FIXME:
+                         */
+
+                    }
                     default:{
                         std::cerr<<"intercheck error while get rel with unsupport pattern type"<<std::endl;
                         exit(-1);
@@ -641,10 +614,20 @@ namespace noisepage::optimizer {
                 }
             }
 
+            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> WeTuneRule::GetProjAttrs (std::vector<noisepage::planner::IndexExpression>& exprs,const Pattern* p) const{
+                std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
+                for(auto expr : exprs){
+                    ExprSet col_set;
+                    parser::ExpressionUtil::GetTupleValueExprs(&col_set,expr);
+                    for(auto& col_expr: col_set){
+                        auto e = dynamic_cast<parser::ColumnValueExpression*>(col_expr.Get());
+                        attrs.insert(std::make_tuple(e->GetColumnOid(),e->GetTableOid(),e->GetDatabaseOid()));    
+                    }
+                }
+                return attrs;
+            }
+
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> WeTuneRule::GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
-                /**
-                 * TODO: find the placeholder place in constrainer.
-                 */
                 std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
                 /**
                  * if c_pos == 0,then we get attrs of left relation
@@ -663,27 +646,19 @@ namespace noisepage::optimizer {
                     std::cerr<<"failed to find constraint item in pattern relorattrs"<<std::endl;
                     return attrs;
                 } 
-                auto GetTableNames = [](const Pattern* p,int idx) -> std::unordered_set<catalog::table_oid_t> {
+                auto GetTableNames = [this](const Pattern* p,int idx) -> std::unordered_set<catalog::table_oid_t> {
                     auto child = p->Children()[idx];
                     std::unordered_set<catalog::table_oid_t> tb_oid_set;
-                    if(child->Type() == OpType::LOGICALGET){
-                        /**
-                        * TODO: 11_03,now we just let logicalget as a relation, not a output of subquery,because
-                        * if will lead the TableEq(t1,t2) more difficult
-                        */
-                        tb_oid_set.insert(p->Children()[0]->get_->GetTableOid());
+                    if(child->Type() == OpType::LEAF){
+                        GetRelFromLeaf(child,tb_oid_set);
                     }else if (child->Type() == OpType::LOGICALPROJECTION){
-                        auto tb_oid = std::get<1>(*child->proj_.begin());
-                        tb_oid_set.insert(tb_oid);
+                        GetRelFromProj(p,tb_oid_set);
                     }else{
                         std::cerr<<"bad type of join children pattern"<<std::endl;
                     }
                     return tb_oid_set;
                 };
                 auto tb_sets = GetTableNames(p,c_pos);
-                if(tb_sets.size()!=1){
-                    std::cerr<<"get tb_sets for join error, tb_sets size = "<<tb_sets.size()<<std::endl;
-                }
                 for(size_t i=0;i<preds.size();i++){
                     auto expr = preds[i].GetExpr();
                     switch(expr->GetExpressionType()){

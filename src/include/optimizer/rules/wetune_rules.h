@@ -37,8 +37,6 @@ namespace noisepage::optimizer {
             bool Check(common::ManagedPointer<AbstractOptimizerNode> plan, OptimizationContext *context) const {
                 //bind pattern with logical plan
                 if(!BindPatternToPlan(plan,match_pattern_))return false;
-                //padding projection pattern attr info
-                BindProjectPattern(match_pattern_);
                 //check the constrains
                 for(auto constrain : constrains_){
                     if(constrain.placeholders.size() != 2 || constrain.placeholders.size() != 4){
@@ -70,7 +68,7 @@ namespace noisepage::optimizer {
                     std::vector<std::unique_ptr<AbstractOptimizerNode>> *transformed,
                     OptimizationContext *context) const {
                 auto root = BuildRewritePlan(substitute_,context);   
-                transformed->push_back(root); 
+                transformed->push_back(root->Copy()); 
             }
             
         private:
@@ -82,12 +80,15 @@ namespace noisepage::optimizer {
             std::unique_ptr<AbstractOptimizerNode> BuildRewritePlan(Pattern* p,OptimizationContext *context) const;
             void GetTransConstrains();
             bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
-            void BindProjectPattern(Pattern* p) const;
+
             void GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
+            void GetRelFromProj(const Pattern* plan, std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
+
             bool CheckSubPlanEqual(const common::ManagedPointer<AbstractOptimizerNode>& left,const common::ManagedPointer<AbstractOptimizerNode>& right) const;
             
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
+            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetProjAttrs (std::vector<noisepage::planner::IndexExpression>& exprs,const Pattern* p) const;
             
             std::string MakeName(const std::string &input) {
                 std::hash<std::string> hash_fn;
