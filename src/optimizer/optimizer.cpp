@@ -224,7 +224,7 @@ void Optimizer::OptimizeLoop(group_id_t root_group_id, PropertySet *required_pro
   // Perform optimization after the rewrite
   Memo &memo = context_->GetMemo();
   task_stack->Push(new OptimizeGroup(memo.GetGroupByID(root_group_id), root_context));
-/*  */
+
   // Derive stats for the only one logical expression before optimizing
   task_stack->Push(new DeriveStats(memo.GetGroupByID(root_group_id)->GetLogicalExpression(), root_context));
 

@@ -35,6 +35,9 @@ namespace noisepage::optimizer {
                     new_pattern->AddRelOrAttr(p->rel_or_attrs);
                 }else if(p->type == PatternType::P_PROJ){
                     new_pattern = new Pattern(OpType::LOGICALPROJECTION);
+                    /**
+                     * at most of time, projection means the subquery 
+                     */
                     auto left = MakePattern(p->children_[0],sets);
                     new_pattern->AddChild(left);
                     new_pattern->AddRelOrAttr(p->rel_or_attrs);

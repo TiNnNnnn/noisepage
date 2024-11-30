@@ -157,7 +157,7 @@ class Module {
   // triggers a compilation in the background.
   void CompileToMachineCodeAsync();
 
- private:
+ private: 
   // The module containing all TBC (i.e., bytecode) for the TPL program.
   std::unique_ptr<BytecodeModule> bytecode_module_;
 
