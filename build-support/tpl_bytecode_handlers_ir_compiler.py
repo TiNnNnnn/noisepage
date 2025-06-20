@@ -28,6 +28,7 @@
 # Fortunately, we are only compiling with common flags which are shared by both gcc and clang.
 # If this changes, we may need the above superproject / externalproject solutions.
 
+import json
 import os
 import sys
 import subprocess
@@ -77,27 +78,45 @@ def apply_transform(flag: str) -> str:
     return FLAG_TRANSFORMS[flag] if flag in FLAG_TRANSFORMS else flag
 
 def get_clang_flags() -> List[str]:
-    """
-    Compute the flags passed to clang++ to compile the bytecodes.
-    :return A list of the flags to pass to clang++ (strings)
-    """
-    prev = ""
-    with open("compile_commands.json") as f:
-        for line in f:
-            # Look for the line that ends with bytecode_handlers_ir.cpp".
-            # The preceding line should be the compilation command.
-            if line.endswith('bytecode_handlers_ir.cpp"\n'):
-                command = prev
-                # Some magic parsing logic. I hate this.
-                _, _, _, command, _ = command.split('"')
-                # Remove the compiler (idx 0) and executable (-o blah -c blahblah).
-                command = command.split(' ')[1:-4]
-                # Return the compile command.
-                return [apply_transform(c) for c in filter(lambda x: x not in FLAG_BLACKLIST, command)]
-            
-            # Record the line for the next iteration.
-            prev = line
+    compile_commands_path = os.path.join(PATH_TO_CMAKE_BINARY_DIR, "compile_commands.json")
+    with open(compile_commands_path, "r") as f:
+        compile_commands = json.load(f)
+        for entry in compile_commands:
+            if entry["file"].endswith("bytecode_handlers_ir.cpp"):
+                command = entry["command"]
+                command = command.split(" ")
+                # Remove compiler and trailing `-o ... -c ...`
+                command = command[1:-4]
+                # 添加必要的 include 路径以解决 <cstdint> 等找不到的问题
+                extra_includes = [
+                    "-isystem", "/usr/include/c++/9",
+                    "-isystem", "/usr/include/x86_64-linux-gnu/c++/9"
+                ]
+                return [apply_transform(c) for c in command if c not in FLAG_BLACKLIST] + extra_includes
     raise Exception("Could not find bytecode_handlers_ir.cpp in compile_commands.json.")
+
+# def get_clang_flags() -> List[str]:
+#     """
+#     Compute the flags passed to clang++ to compile the bytecodes.
+#     :return A list of the flags to pass to clang++ (strings)
+#     """
+#     prev = ""
+#     with open("compile_commands.json") as f:
+#         for line in f:
+#             # Look for the line that ends with bytecode_handlers_ir.cpp".
+#             # The preceding line should be the compilation command.
+#             if line.endswith('bytecode_handlers_ir.cpp"\n'):
+#                 command = prev
+#                 # Some magic parsing logic. I hate this.
+#                 _, _, _, command, _ = command.split('"')
+#                 # Remove the compiler (idx 0) and executable (-o blah -c blahblah).
+#                 command = command.split(' ')[1:-4]
+#                 # Return the compile command.
+#                 return [apply_transform(c) for c in filter(lambda x: x not in FLAG_BLACKLIST, command)]
+            
+#             # Record the line for the next iteration.
+#             prev = line
+#     raise Exception("Could not find bytecode_handlers_ir.cpp in compile_commands.json.")
 
 def main() -> int:
     os.chdir(PATH_TO_CMAKE_BINARY_DIR)
