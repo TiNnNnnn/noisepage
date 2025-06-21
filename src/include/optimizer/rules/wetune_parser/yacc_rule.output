@@ -1,0 +1,1227 @@
+终端机在文法中未使用
+
+    BY
+    CREATE
+    DROP
+    GROUP
+    TABLE
+    TABLES
+    INDEX
+    CALC
+    SELECT
+    DESC
+    SHOW
+    SYNC
+    INSERT
+    DELETE
+    UPDATE
+    LBRACKET
+    RBRACKET
+    TRX_BEGIN
+    TRX_COMMIT
+    TRX_ROLLBACK
+    INT_T
+    STRING_T
+    FLOAT_T
+    DATE_T
+    VECTOR_T
+    HELP
+    EXIT
+    DOT
+    INTO
+    VALUES
+    FROM
+    WHERE
+    AND
+    SET
+    ON
+    LOAD
+    INFILE
+    EXPLAIN
+    STORAGE
+    FORMAT
+    DATA
+    EQ
+    LE
+    GE
+    NE
+    LIKE
+    L2_DISTANCE
+    COSINE_DISTANCE
+    INNER_DISTANCE
+    INNER
+    JOIN
+    IN
+    EXSIST
+    NOT
+    NULLABLE
+    PRIMARY
+    KEY
+    NUMBER
+    FLOAT
+    SSS
+
+
+语法
+
+    0 $accept: commands $end
+
+    1 commands: command_wrapper
+
+    2 command_wrapper: rule_stmt
+
+    3 opt_star: '*'
+    4         | %empty
+
+    5 constrain: TABLEEQ LBRACE ID COMMA ID RBRACE
+    6          | ATTRSEQ LBRACE ID COMMA ID RBRACE
+    7          | ATTRSSUB LBRACE ID COMMA ID RBRACE
+    8          | PREDICATEEQ LBRACE ID COMMA ID RBRACE
+    9          | SCHEMAEQ LBRACE ID COMMA ID RBRACE
+   10          | NOTNULL LBRACE ID COMMA ID RBRACE
+   11          | UNIQUE LBRACE ID COMMA ID RBRACE
+   12          | REFERENCE LBRACE ID COMMA ID COMMA ID COMMA ID RBRACE
+
+   13 constrain_list: constrain
+   14               | constrain_list SEMICOLON constrain
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+   16        | RIGHTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+   17        | INNERJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+   18        | INPUT LT ID GT
+   19        | PROJ opt_star LT ID ID GT LBRACE pattern RBRACE
+   20        | INSUBFILTER LT ID GT LBRACE pattern COMMA pattern RBRACE
+   21        | FILTER LT ID COMMA ID GT LBRACE pattern RBRACE
+
+   22 rule_stmt: pattern BAR pattern BAR constrain_list
+
+
+终结语词，附有它们出现处的规则
+
+    $end (0) 0
+    '*' (42) 3
+    error (256)
+    SEMICOLON (258) 14
+    BY (259)
+    CREATE (260)
+    DROP (261)
+    GROUP (262)
+    TABLE (263)
+    TABLES (264)
+    INDEX (265)
+    CALC (266)
+    SELECT (267)
+    DESC (268)
+    SHOW (269)
+    SYNC (270)
+    INSERT (271)
+    DELETE (272)
+    UPDATE (273)
+    LBRACE (274) 5 6 7 8 9 10 11 12 15 16 17 19 20 21
+    RBRACE (275) 5 6 7 8 9 10 11 12 15 16 17 19 20 21
+    LBRACKET (276)
+    RBRACKET (277)
+    COMMA (278) 5 6 7 8 9 10 11 12 15 16 17 20 21
+    TRX_BEGIN (279)
+    TRX_COMMIT (280)
+    TRX_ROLLBACK (281)
+    INT_T (282)
+    STRING_T (283)
+    FLOAT_T (284)
+    DATE_T (285)
+    VECTOR_T (286)
+    HELP (287)
+    EXIT (288)
+    DOT (289)
+    INTO (290)
+    VALUES (291)
+    FROM (292)
+    WHERE (293)
+    AND (294)
+    SET (295)
+    ON (296)
+    LOAD (297)
+    INFILE (298)
+    EXPLAIN (299)
+    STORAGE (300)
+    FORMAT (301)
+    DATA (302)
+    EQ (303)
+    LT (304) 15 16 17 18 19 20 21
+    GT (305) 15 16 17 18 19 20 21
+    LE (306)
+    GE (307)
+    NE (308)
+    LIKE (309)
+    L2_DISTANCE (310)
+    COSINE_DISTANCE (311)
+    INNER_DISTANCE (312)
+    INNER (313)
+    JOIN (314)
+    IN (315)
+    EXSIST (316)
+    NOT (317)
+    UNIQUE (318) 11
+    NULLABLE (319)
+    PRIMARY (320)
+    KEY (321)
+    BAR (322) 22
+    TABLEEQ (323) 5
+    ATTRSEQ (324) 6
+    PREDICATEEQ (325) 8
+    SCHEMAEQ (326) 9
+    ATTRSSUB (327) 7
+    REFERENCE (328) 12
+    NOTNULL (329) 10
+    LEFTJOIN (330) 15
+    RIGHTJOIN (331) 16
+    INNERJOIN (332) 17
+    INPUT (333) 18
+    PROJ (334) 19
+    INSUBFILTER (335) 20
+    FILTER (336) 21
+    NUMBER <number> (337)
+    FLOAT <floats> (338)
+    ID <string> (339) 5 6 7 8 9 10 11 12 15 16 17 18 19 20 21
+    SSS <string> (340)
+
+
+非终结语词，附有它们出现处的规则
+
+    $accept (87)
+        on left: 0
+    commands <sql_node> (88)
+        on left: 1
+        on right: 0
+    command_wrapper <sql_node> (89)
+        on left: 2
+        on right: 1
+    opt_star <boolean> (90)
+        on left: 3 4
+        on right: 19
+    constrain <cs> (91)
+        on left: 5 6 7 8 9 10 11 12
+        on right: 13 14
+    constrain_list <cs_list> (92)
+        on left: 13 14
+        on right: 14 22
+    pattern <pattern> (93)
+        on left: 15 16 17 18 19 20 21
+        on right: 15 16 17 19 20 21 22
+    rule_stmt <sql_node> (94)
+        on left: 22
+        on right: 2
+
+
+状态 0
+
+    0 $accept: . commands $end
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    commands         转到状态 8
+    command_wrapper  转到状态 9
+    pattern          转到状态 10
+    rule_stmt        转到状态 11
+
+
+状态 1
+
+   15 pattern: LEFTJOIN . LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    LT  偏移，并进入状态 12
+
+
+状态 2
+
+   16 pattern: RIGHTJOIN . LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    LT  偏移，并进入状态 13
+
+
+状态 3
+
+   17 pattern: INNERJOIN . LT ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    LT  偏移，并进入状态 14
+
+
+状态 4
+
+   18 pattern: INPUT . LT ID GT
+
+    LT  偏移，并进入状态 15
+
+
+状态 5
+
+   19 pattern: PROJ . opt_star LT ID ID GT LBRACE pattern RBRACE
+
+    '*'  偏移，并进入状态 16
+
+    $default  使用规则 4 以归约 (opt_star)
+
+    opt_star  转到状态 17
+
+
+状态 6
+
+   20 pattern: INSUBFILTER . LT ID GT LBRACE pattern COMMA pattern RBRACE
+
+    LT  偏移，并进入状态 18
+
+
+状态 7
+
+   21 pattern: FILTER . LT ID COMMA ID GT LBRACE pattern RBRACE
+
+    LT  偏移，并进入状态 19
+
+
+状态 8
+
+    0 $accept: commands . $end
+
+    $end  偏移，并进入状态 20
+
+
+状态 9
+
+    1 commands: command_wrapper .
+
+    $default  使用规则 1 以归约 (commands)
+
+
+状态 10
+
+   22 rule_stmt: pattern . BAR pattern BAR constrain_list
+
+    BAR  偏移，并进入状态 21
+
+
+状态 11
+
+    2 command_wrapper: rule_stmt .
+
+    $default  使用规则 2 以归约 (command_wrapper)
+
+
+状态 12
+
+   15 pattern: LEFTJOIN LT . ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 22
+
+
+状态 13
+
+   16 pattern: RIGHTJOIN LT . ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 23
+
+
+状态 14
+
+   17 pattern: INNERJOIN LT . ID ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 24
+
+
+状态 15
+
+   18 pattern: INPUT LT . ID GT
+
+    ID  偏移，并进入状态 25
+
+
+状态 16
+
+    3 opt_star: '*' .
+
+    $default  使用规则 3 以归约 (opt_star)
+
+
+状态 17
+
+   19 pattern: PROJ opt_star . LT ID ID GT LBRACE pattern RBRACE
+
+    LT  偏移，并进入状态 26
+
+
+状态 18
+
+   20 pattern: INSUBFILTER LT . ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 27
+
+
+状态 19
+
+   21 pattern: FILTER LT . ID COMMA ID GT LBRACE pattern RBRACE
+
+    ID  偏移，并进入状态 28
+
+
+状态 20
+
+    0 $accept: commands $end .
+
+    $default  接受
+
+
+状态 21
+
+   22 rule_stmt: pattern BAR . pattern BAR constrain_list
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 29
+
+
+状态 22
+
+   15 pattern: LEFTJOIN LT ID . ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 30
+
+
+状态 23
+
+   16 pattern: RIGHTJOIN LT ID . ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 31
+
+
+状态 24
+
+   17 pattern: INNERJOIN LT ID . ID GT LBRACE pattern COMMA pattern RBRACE
+
+    ID  偏移，并进入状态 32
+
+
+状态 25
+
+   18 pattern: INPUT LT ID . GT
+
+    GT  偏移，并进入状态 33
+
+
+状态 26
+
+   19 pattern: PROJ opt_star LT . ID ID GT LBRACE pattern RBRACE
+
+    ID  偏移，并进入状态 34
+
+
+状态 27
+
+   20 pattern: INSUBFILTER LT ID . GT LBRACE pattern COMMA pattern RBRACE
+
+    GT  偏移，并进入状态 35
+
+
+状态 28
+
+   21 pattern: FILTER LT ID . COMMA ID GT LBRACE pattern RBRACE
+
+    COMMA  偏移，并进入状态 36
+
+
+状态 29
+
+   22 rule_stmt: pattern BAR pattern . BAR constrain_list
+
+    BAR  偏移，并进入状态 37
+
+
+状态 30
+
+   15 pattern: LEFTJOIN LT ID ID . GT LBRACE pattern COMMA pattern RBRACE
+
+    GT  偏移，并进入状态 38
+
+
+状态 31
+
+   16 pattern: RIGHTJOIN LT ID ID . GT LBRACE pattern COMMA pattern RBRACE
+
+    GT  偏移，并进入状态 39
+
+
+状态 32
+
+   17 pattern: INNERJOIN LT ID ID . GT LBRACE pattern COMMA pattern RBRACE
+
+    GT  偏移，并进入状态 40
+
+
+状态 33
+
+   18 pattern: INPUT LT ID GT .
+
+    $default  使用规则 18 以归约 (pattern)
+
+
+状态 34
+
+   19 pattern: PROJ opt_star LT ID . ID GT LBRACE pattern RBRACE
+
+    ID  偏移，并进入状态 41
+
+
+状态 35
+
+   20 pattern: INSUBFILTER LT ID GT . LBRACE pattern COMMA pattern RBRACE
+
+    LBRACE  偏移，并进入状态 42
+
+
+状态 36
+
+   21 pattern: FILTER LT ID COMMA . ID GT LBRACE pattern RBRACE
+
+    ID  偏移，并进入状态 43
+
+
+状态 37
+
+   22 rule_stmt: pattern BAR pattern BAR . constrain_list
+
+    UNIQUE       偏移，并进入状态 44
+    TABLEEQ      偏移，并进入状态 45
+    ATTRSEQ      偏移，并进入状态 46
+    PREDICATEEQ  偏移，并进入状态 47
+    SCHEMAEQ     偏移，并进入状态 48
+    ATTRSSUB     偏移，并进入状态 49
+    REFERENCE    偏移，并进入状态 50
+    NOTNULL      偏移，并进入状态 51
+
+    constrain       转到状态 52
+    constrain_list  转到状态 53
+
+
+状态 38
+
+   15 pattern: LEFTJOIN LT ID ID GT . LBRACE pattern COMMA pattern RBRACE
+
+    LBRACE  偏移，并进入状态 54
+
+
+状态 39
+
+   16 pattern: RIGHTJOIN LT ID ID GT . LBRACE pattern COMMA pattern RBRACE
+
+    LBRACE  偏移，并进入状态 55
+
+
+状态 40
+
+   17 pattern: INNERJOIN LT ID ID GT . LBRACE pattern COMMA pattern RBRACE
+
+    LBRACE  偏移，并进入状态 56
+
+
+状态 41
+
+   19 pattern: PROJ opt_star LT ID ID . GT LBRACE pattern RBRACE
+
+    GT  偏移，并进入状态 57
+
+
+状态 42
+
+   20 pattern: INSUBFILTER LT ID GT LBRACE . pattern COMMA pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 58
+
+
+状态 43
+
+   21 pattern: FILTER LT ID COMMA ID . GT LBRACE pattern RBRACE
+
+    GT  偏移，并进入状态 59
+
+
+状态 44
+
+   11 constrain: UNIQUE . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 60
+
+
+状态 45
+
+    5 constrain: TABLEEQ . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 61
+
+
+状态 46
+
+    6 constrain: ATTRSEQ . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 62
+
+
+状态 47
+
+    8 constrain: PREDICATEEQ . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 63
+
+
+状态 48
+
+    9 constrain: SCHEMAEQ . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 64
+
+
+状态 49
+
+    7 constrain: ATTRSSUB . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 65
+
+
+状态 50
+
+   12 constrain: REFERENCE . LBRACE ID COMMA ID COMMA ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 66
+
+
+状态 51
+
+   10 constrain: NOTNULL . LBRACE ID COMMA ID RBRACE
+
+    LBRACE  偏移，并进入状态 67
+
+
+状态 52
+
+   13 constrain_list: constrain .
+
+    $default  使用规则 13 以归约 (constrain_list)
+
+
+状态 53
+
+   14 constrain_list: constrain_list . SEMICOLON constrain
+   22 rule_stmt: pattern BAR pattern BAR constrain_list .
+
+    SEMICOLON  偏移，并进入状态 68
+
+    $default  使用规则 22 以归约 (rule_stmt)
+
+
+状态 54
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE . pattern COMMA pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 69
+
+
+状态 55
+
+   16 pattern: RIGHTJOIN LT ID ID GT LBRACE . pattern COMMA pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 70
+
+
+状态 56
+
+   17 pattern: INNERJOIN LT ID ID GT LBRACE . pattern COMMA pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 71
+
+
+状态 57
+
+   19 pattern: PROJ opt_star LT ID ID GT . LBRACE pattern RBRACE
+
+    LBRACE  偏移，并进入状态 72
+
+
+状态 58
+
+   20 pattern: INSUBFILTER LT ID GT LBRACE pattern . COMMA pattern RBRACE
+
+    COMMA  偏移，并进入状态 73
+
+
+状态 59
+
+   21 pattern: FILTER LT ID COMMA ID GT . LBRACE pattern RBRACE
+
+    LBRACE  偏移，并进入状态 74
+
+
+状态 60
+
+   11 constrain: UNIQUE LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 75
+
+
+状态 61
+
+    5 constrain: TABLEEQ LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 76
+
+
+状态 62
+
+    6 constrain: ATTRSEQ LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 77
+
+
+状态 63
+
+    8 constrain: PREDICATEEQ LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 78
+
+
+状态 64
+
+    9 constrain: SCHEMAEQ LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 79
+
+
+状态 65
+
+    7 constrain: ATTRSSUB LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 80
+
+
+状态 66
+
+   12 constrain: REFERENCE LBRACE . ID COMMA ID COMMA ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 81
+
+
+状态 67
+
+   10 constrain: NOTNULL LBRACE . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 82
+
+
+状态 68
+
+   14 constrain_list: constrain_list SEMICOLON . constrain
+
+    UNIQUE       偏移，并进入状态 44
+    TABLEEQ      偏移，并进入状态 45
+    ATTRSEQ      偏移，并进入状态 46
+    PREDICATEEQ  偏移，并进入状态 47
+    SCHEMAEQ     偏移，并进入状态 48
+    ATTRSSUB     偏移，并进入状态 49
+    REFERENCE    偏移，并进入状态 50
+    NOTNULL      偏移，并进入状态 51
+
+    constrain  转到状态 83
+
+
+状态 69
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE pattern . COMMA pattern RBRACE
+
+    COMMA  偏移，并进入状态 84
+
+
+状态 70
+
+   16 pattern: RIGHTJOIN LT ID ID GT LBRACE pattern . COMMA pattern RBRACE
+
+    COMMA  偏移，并进入状态 85
+
+
+状态 71
+
+   17 pattern: INNERJOIN LT ID ID GT LBRACE pattern . COMMA pattern RBRACE
+
+    COMMA  偏移，并进入状态 86
+
+
+状态 72
+
+   19 pattern: PROJ opt_star LT ID ID GT LBRACE . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 87
+
+
+状态 73
+
+   20 pattern: INSUBFILTER LT ID GT LBRACE pattern COMMA . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 88
+
+
+状态 74
+
+   21 pattern: FILTER LT ID COMMA ID GT LBRACE . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 89
+
+
+状态 75
+
+   11 constrain: UNIQUE LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 90
+
+
+状态 76
+
+    5 constrain: TABLEEQ LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 91
+
+
+状态 77
+
+    6 constrain: ATTRSEQ LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 92
+
+
+状态 78
+
+    8 constrain: PREDICATEEQ LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 93
+
+
+状态 79
+
+    9 constrain: SCHEMAEQ LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 94
+
+
+状态 80
+
+    7 constrain: ATTRSSUB LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 95
+
+
+状态 81
+
+   12 constrain: REFERENCE LBRACE ID . COMMA ID COMMA ID COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 96
+
+
+状态 82
+
+   10 constrain: NOTNULL LBRACE ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 97
+
+
+状态 83
+
+   14 constrain_list: constrain_list SEMICOLON constrain .
+
+    $default  使用规则 14 以归约 (constrain_list)
+
+
+状态 84
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE pattern COMMA . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 98
+
+
+状态 85
+
+   16 pattern: RIGHTJOIN LT ID ID GT LBRACE pattern COMMA . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 99
+
+
+状态 86
+
+   17 pattern: INNERJOIN LT ID ID GT LBRACE pattern COMMA . pattern RBRACE
+
+    LEFTJOIN     偏移，并进入状态 1
+    RIGHTJOIN    偏移，并进入状态 2
+    INNERJOIN    偏移，并进入状态 3
+    INPUT        偏移，并进入状态 4
+    PROJ         偏移，并进入状态 5
+    INSUBFILTER  偏移，并进入状态 6
+    FILTER       偏移，并进入状态 7
+
+    pattern  转到状态 100
+
+
+状态 87
+
+   19 pattern: PROJ opt_star LT ID ID GT LBRACE pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 101
+
+
+状态 88
+
+   20 pattern: INSUBFILTER LT ID GT LBRACE pattern COMMA pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 102
+
+
+状态 89
+
+   21 pattern: FILTER LT ID COMMA ID GT LBRACE pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 103
+
+
+状态 90
+
+   11 constrain: UNIQUE LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 104
+
+
+状态 91
+
+    5 constrain: TABLEEQ LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 105
+
+
+状态 92
+
+    6 constrain: ATTRSEQ LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 106
+
+
+状态 93
+
+    8 constrain: PREDICATEEQ LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 107
+
+
+状态 94
+
+    9 constrain: SCHEMAEQ LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 108
+
+
+状态 95
+
+    7 constrain: ATTRSSUB LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 109
+
+
+状态 96
+
+   12 constrain: REFERENCE LBRACE ID COMMA . ID COMMA ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 110
+
+
+状态 97
+
+   10 constrain: NOTNULL LBRACE ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 111
+
+
+状态 98
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE pattern COMMA pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 112
+
+
+状态 99
+
+   16 pattern: RIGHTJOIN LT ID ID GT LBRACE pattern COMMA pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 113
+
+
+状态 100
+
+   17 pattern: INNERJOIN LT ID ID GT LBRACE pattern COMMA pattern . RBRACE
+
+    RBRACE  偏移，并进入状态 114
+
+
+状态 101
+
+   19 pattern: PROJ opt_star LT ID ID GT LBRACE pattern RBRACE .
+
+    $default  使用规则 19 以归约 (pattern)
+
+
+状态 102
+
+   20 pattern: INSUBFILTER LT ID GT LBRACE pattern COMMA pattern RBRACE .
+
+    $default  使用规则 20 以归约 (pattern)
+
+
+状态 103
+
+   21 pattern: FILTER LT ID COMMA ID GT LBRACE pattern RBRACE .
+
+    $default  使用规则 21 以归约 (pattern)
+
+
+状态 104
+
+   11 constrain: UNIQUE LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 115
+
+
+状态 105
+
+    5 constrain: TABLEEQ LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 116
+
+
+状态 106
+
+    6 constrain: ATTRSEQ LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 117
+
+
+状态 107
+
+    8 constrain: PREDICATEEQ LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 118
+
+
+状态 108
+
+    9 constrain: SCHEMAEQ LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 119
+
+
+状态 109
+
+    7 constrain: ATTRSSUB LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 120
+
+
+状态 110
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID . COMMA ID COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 121
+
+
+状态 111
+
+   10 constrain: NOTNULL LBRACE ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 122
+
+
+状态 112
+
+   15 pattern: LEFTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE .
+
+    $default  使用规则 15 以归约 (pattern)
+
+
+状态 113
+
+   16 pattern: RIGHTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE .
+
+    $default  使用规则 16 以归约 (pattern)
+
+
+状态 114
+
+   17 pattern: INNERJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE .
+
+    $default  使用规则 17 以归约 (pattern)
+
+
+状态 115
+
+   11 constrain: UNIQUE LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 11 以归约 (constrain)
+
+
+状态 116
+
+    5 constrain: TABLEEQ LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 5 以归约 (constrain)
+
+
+状态 117
+
+    6 constrain: ATTRSEQ LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 6 以归约 (constrain)
+
+
+状态 118
+
+    8 constrain: PREDICATEEQ LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 8 以归约 (constrain)
+
+
+状态 119
+
+    9 constrain: SCHEMAEQ LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 9 以归约 (constrain)
+
+
+状态 120
+
+    7 constrain: ATTRSSUB LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 7 以归约 (constrain)
+
+
+状态 121
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID COMMA . ID COMMA ID RBRACE
+
+    ID  偏移，并进入状态 123
+
+
+状态 122
+
+   10 constrain: NOTNULL LBRACE ID COMMA ID RBRACE .
+
+    $default  使用规则 10 以归约 (constrain)
+
+
+状态 123
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID COMMA ID . COMMA ID RBRACE
+
+    COMMA  偏移，并进入状态 124
+
+
+状态 124
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID COMMA ID COMMA . ID RBRACE
+
+    ID  偏移，并进入状态 125
+
+
+状态 125
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID COMMA ID COMMA ID . RBRACE
+
+    RBRACE  偏移，并进入状态 126
+
+
+状态 126
+
+   12 constrain: REFERENCE LBRACE ID COMMA ID COMMA ID COMMA ID RBRACE .
+
+    $default  使用规则 12 以归约 (constrain)

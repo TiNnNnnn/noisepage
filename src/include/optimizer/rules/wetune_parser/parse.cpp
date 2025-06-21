@@ -1,5 +1,5 @@
 #include "parse.h"
-
+#include <iostream>
 
 bool parse(char *st, ParsedSqlNode*sqln);
 
@@ -15,6 +15,7 @@ void ParsedSqlResult::add_sql_node(std::unique_ptr<ParsedSqlNode> sql_node)
 int sql_parse(const char *st,ParsedSqlResult*sql_result);
 
 bool parse(const char* s,ParsedSqlResult *sql_result){
+    //std::cout<<"rule sql: "<<s<<std::endl;
     sql_parse(s,sql_result);
     return true;
 }

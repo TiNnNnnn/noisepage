@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
+#include <iostream>
 
 #include "parser_defs.h"
 #include "yacc_rule.hpp"
@@ -140,7 +141,6 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
 %token <string> SSS
 
 //非终结符
-/** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
 %type<sql_node>  rule_stmt
 %type<sql_node>  command_wrapper
 %type<sql_node>  commands
@@ -150,7 +150,7 @@ int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result,
 %type<boolean>   opt_star
 %%
 
-commands: command_wrapper opt_semicolon  //commands or sqls. parser starts here.
+commands: command_wrapper //opt_semicolon  commands or sqls. parser starts here.
   {
     std::unique_ptr<ParsedSqlNode> sql_node = std::unique_ptr<ParsedSqlNode>($1);
     sql_result->add_sql_node(std::move(sql_node));
@@ -159,6 +159,11 @@ commands: command_wrapper opt_semicolon  //commands or sqls. parser starts here.
 
 command_wrapper:
   rule_stmt
+  ;
+
+opt_star
+  : '*'     { $$ = true; }
+  |         { $$ = false; }
   ;
 
 constrain:
@@ -181,7 +186,7 @@ constrain:
     $$ = new ReWriteConstrain();
     $$->type = RewriteConstrainType::C_SubAttrs;
     $$->placeholders.push_back($3);
-    $$->placeholders.push_back($3);
+    $$->placeholders.push_back($5);
   }
   | PREDICATEEQ LBRACE ID COMMA ID RBRACE
   {
@@ -223,19 +228,22 @@ constrain:
   ;
 
 constrain_list:
-  constrain
-  {
-    $$ = new std::vector<ReWriteConstrain>();
-    $$->push_back(*$1);
-  }
-  |constrain_list ';' constrain {
-    $$->push_back (*$3);
-  }
-  ;
-
+    constrain
+    {
+      $$ = new std::vector<ReWriteConstrain>();
+      $$->push_back(*$1);
+      delete $1;
+    }
+  | constrain_list SEMICOLON constrain
+    {
+      $$ = $1;
+      $$->push_back(*$3);
+      delete $3;
+    }
+;
 
 pattern:
-  LEFTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
+  LEFTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_LEFTJOIN;
@@ -244,7 +252,7 @@ pattern:
     $$->children_.push_back($7);
     $$->children_.push_back($9);
   }
-  | RIGHTJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
+  | RIGHTJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_RIGHTJOIN;
@@ -253,7 +261,7 @@ pattern:
     $$->children_.push_back($7);
     $$->children_.push_back($9);
   }
-  | INNERJOIN '<' ID ID '>' LBRACE pattern COMMA pattern RBRACE
+  | INNERJOIN LT ID ID GT LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_INNERJOIN;
@@ -262,13 +270,13 @@ pattern:
     $$->children_.push_back($7);
     $$->children_.push_back($9);
   }
-  | INPUT '<' ID '>'
+  | INPUT LT ID GT 
   {
     $$ = new WPattern();
     $$->type = PatternType::P_INPUT;
     $$->rel_or_attrs.push_back($3);
   }
-  | PROJ opt_star '<' ID ID '>' LBRACE pattern RBRACE
+  | PROJ opt_star LT ID ID GT LBRACE pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_PROJ;
@@ -277,7 +285,7 @@ pattern:
     $$->rel_or_attrs.push_back($5);
     $$->children_.push_back($8);
   }
-  | INSUBFILTER '<' ID '>' LBRACE pattern COMMA pattern RBRACE
+  | INSUBFILTER LT ID GT LBRACE pattern COMMA pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_INSUB;
@@ -285,7 +293,7 @@ pattern:
     $$->children_.push_back($6);
     $$->children_.push_back($8);
   }
-  | FILTER '<' ID COMMA ID '>' LBRACE pattern RBRACE
+  | FILTER LT ID COMMA ID GT LBRACE pattern RBRACE
   {
     $$ = new WPattern();
     $$->type = PatternType::P_SEL;
@@ -294,19 +302,9 @@ pattern:
     $$->children_.push_back($8);
   }
   ;
-opt_star:
-  {
-    $$ = false;
-  }
-  | '*'
-  {
-    $$ = true;
-  }
-  ;
-
 
 rule_stmt:
-  pattern BAR pattern BAR constrain_list
+  pattern BAR pattern BAR constrain_list 
   {
     $$ = new ParsedSqlNode(SCF_RULE);
     $$->rule.left = $1;
@@ -315,9 +313,9 @@ rule_stmt:
   }
   ;
 
-opt_semicolon: /*empty*/
-    | SEMICOLON
-    ;
+//opt_semicolon: /*empty*/
+//    | SEMICOLON
+//    ;
 
 %%
 //_____________________________________________________________________

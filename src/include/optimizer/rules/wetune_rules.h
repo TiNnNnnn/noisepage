@@ -33,11 +33,18 @@ namespace noisepage::optimizer {
                 delete(match_pattern_);
                 delete(substitute_);
             }
-            
+
+             /**
+             * Checks whether the given rule can be applied
+             * @param plan AbstractOptimizerNode to check
+             * @param context Current OptimizationContext executing under
+             * @returns Whether the input AbstractOptimizerNode passes the check
+             */
             bool Check(common::ManagedPointer<AbstractOptimizerNode> plan, OptimizationContext *context) const {
-                //bind pattern with logical plan
-                if(!BindPatternToPlan(plan,match_pattern_))return false;
-                //check the constrains
+                /*bind pattern with logical plan*/
+                if(!BindPatternToPlan(plan,match_pattern_))
+                    return false;
+                /*check the constrains*/
                 for(auto constrain : constrains_){
                     if(constrain.placeholders.size() != 2 || constrain.placeholders.size() != 4){
                         std::cerr<<"bad wetune rule constrain placeholder size: "<<constrain.placeholders.size()<<std::endl;
@@ -57,13 +64,16 @@ namespace noisepage::optimizer {
                     }else{
                         if(binder_.find(constrain.placeholders[2]) == binder_.end())return false;
                         if(binder_.find(constrain.placeholders[3]) == binder_.end())return false;
-
                     }
-
                 }
                 return true;
             }
-            
+             /**
+             * Transforms the input expression using the given rule
+             * @param input Input AbstractOptimizerNode to transform
+             * @param transformed Vector of transformed AbstractOptimizerNodes
+             * @param context Current OptimizationContext executing under
+             */
             void Transform(common::ManagedPointer<AbstractOptimizerNode> input,
                     std::vector<std::unique_ptr<AbstractOptimizerNode>> *transformed,
                     OptimizationContext *context) const {
@@ -73,23 +83,17 @@ namespace noisepage::optimizer {
             
         private:
             Pattern* MakePattern(WPattern* p, std::unordered_set<std::string>& sets);
-            
             bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain,const Pattern* e1 = nullptr, const Pattern* e2 = nullptr) const;
-
             bool BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const;
             std::unique_ptr<AbstractOptimizerNode> BuildRewritePlan(Pattern* p,OptimizationContext *context) const;
             void GetTransConstrains();
             bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
-
             void GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
             void GetRelFromProj(const Pattern* plan, std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
-
             bool CheckSubPlanEqual(const common::ManagedPointer<AbstractOptimizerNode>& left,const common::ManagedPointer<AbstractOptimizerNode>& right) const;
-            
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetFilterAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const;
             std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> GetProjAttrs (std::vector<noisepage::planner::IndexExpression>& exprs,const Pattern* p) const;
-            
             std::string MakeName(const std::string &input) {
                 std::hash<std::string> hash_fn;
                 size_t hash_value = hash_fn(input);

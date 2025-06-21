@@ -77,14 +77,13 @@ RuleSet::RuleSet() {
   AddRule(RuleSetName::UNNEST_SUBQUERY, new RewritePullFilterThroughAggregation());
   AddRule(RuleSetName::PREDICATE_PUSH_DOWN, new RewriteUnionWithRecursiveCTE());
 
-  /**
-   * TODO: move this var into config file
-   */
-  bool USE_WETUNE = false;
-  if(USE_WETUNE){
+  
+  /**we should add all wetune rule into optimzer here*/
+  bool use_wetune = true;
+  if(use_wetune){
     std::unordered_map<std::string,Rule*> wetune_rules;
     std::unordered_map<int,std::string>file_names;
-    file_names[4] = "wetune_rules";
+    file_names[2] = "/home/yyk/noisepage/src/optimizer/rules/6t2n_normal_reduce.txt";
     read_wetune_rules(file_names,wetune_rules);
     for(const auto& r : wetune_rules){
       AddRule(RuleSetName::LOGICAL_WETUNE,r.second);
@@ -92,8 +91,8 @@ RuleSet::RuleSet() {
   }
 }
 
+/**read wetune rules from files */
 void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,std::unordered_map<std::string,Rule*>&wetune_rules){
-    
     for(auto fname : file_names){
       std::ifstream file(fname.second);
       //int rule_node_size = fname.first;
@@ -102,16 +101,47 @@ void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,
         std::cerr << "Failed to open file: " << fname.second << std::endl;
         return;
       }
-      std::string rule;
-      while (std::getline(file, rule)) {
-        if (rule.empty()) continue;
-        std::unique_ptr<ParsedSqlNode> sql_node;
-        if(!parse_stage.handle_request(rule,sql_node)){
-          std::cerr <<"Faild to parse rule file: "<< fname.second <<std::endl;
-          return;
-        }
-        Rule* wetune_rule = new WeTuneRule(rule,std::move(sql_node));
-        wetune_rules[rule] = wetune_rule;
+      // std::string rule;
+      // while (std::getline(file, rule)) {
+      //   if (rule.empty()) continue;
+      //   std::unique_ptr<ParsedSqlNode> sql_node;
+      //   /**parse text rules to rulenode*/
+      //   if(!parse_stage.handle_request(rule,sql_node)){
+      //     std::cerr <<"Faild to parse rule file: "<< fname.second <<std::endl;
+      //     return;
+      //   }
+      //   Rule* wetune_rule = new WeTuneRule(rule,std::move(sql_node));
+      //   wetune_rules[rule] = wetune_rule;
+      // }
+      std::stringstream buffer;
+      buffer << file.rdbuf();
+      std::string content = buffer.str();
+
+      size_t start = 0;
+      while (true) {
+          size_t end = content.find('\n', start);
+          if (end == std::string::npos) break;
+
+          std::string rule = content.substr(start, end - start);
+
+          rule.erase(rule.begin(), std::find_if(rule.begin(), rule.end(),
+                                                [](unsigned char ch) { return !std::isspace(ch); }));
+          rule.erase(std::find_if(rule.rbegin(), rule.rend(),
+                                  [](unsigned char ch) { return !std::isspace(ch); }).base(),
+                    rule.end());
+          if (rule.empty()) {
+              start = end + 1;
+              continue; 
+          }
+          std::unique_ptr<ParsedSqlNode> sql_node;
+          if (!parse_stage.handle_request(rule, sql_node)) {
+              std::cerr << "Failed to parse rule file: " << fname.second << std::endl;
+              return;
+          }
+          Rule* wetune_rule = new WeTuneRule(rule, std::move(sql_node));
+          wetune_rules[rule] = wetune_rule;
+
+          start = end + 1;
       }
     }
 }

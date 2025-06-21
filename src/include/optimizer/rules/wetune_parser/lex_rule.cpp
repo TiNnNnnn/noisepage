@@ -1199,7 +1199,7 @@ YY_DECL
 		}
 
 	{
-#line 74 "lex_rule.l"
+#line 75 "lex_rule.l"
 
 
 #line 1206 "lex_rule.cpp"
@@ -1261,428 +1261,428 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 76 "lex_rule.l"
+#line 77 "lex_rule.l"
 // ignore whitespace
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 77 "lex_rule.l"
+#line 78 "lex_rule.l"
 ;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 79 "lex_rule.l"
+#line 80 "lex_rule.l"
 yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 80 "lex_rule.l"
+#line 81 "lex_rule.l"
 yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 82 "lex_rule.l"
+#line 83 "lex_rule.l"
 RETURN_TOKEN(SEMICOLON);
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 83 "lex_rule.l"
+#line 84 "lex_rule.l"
 RETURN_TOKEN(DOT);
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 84 "lex_rule.l"
+#line 85 "lex_rule.l"
 RETURN_TOKEN(EXIT);
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 85 "lex_rule.l"
+#line 86 "lex_rule.l"
 RETURN_TOKEN(HELP);
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 86 "lex_rule.l"
+#line 87 "lex_rule.l"
 RETURN_TOKEN(DESC);
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 87 "lex_rule.l"
+#line 88 "lex_rule.l"
 RETURN_TOKEN(CREATE);
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 88 "lex_rule.l"
+#line 89 "lex_rule.l"
 RETURN_TOKEN(DROP);
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 89 "lex_rule.l"
+#line 90 "lex_rule.l"
 RETURN_TOKEN(TABLE);
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 90 "lex_rule.l"
+#line 91 "lex_rule.l"
 RETURN_TOKEN(TABLES);
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 91 "lex_rule.l"
+#line 92 "lex_rule.l"
 RETURN_TOKEN(INDEX);
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 92 "lex_rule.l"
+#line 93 "lex_rule.l"
 RETURN_TOKEN(ON);
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 93 "lex_rule.l"
+#line 94 "lex_rule.l"
 RETURN_TOKEN(SHOW);
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 94 "lex_rule.l"
+#line 95 "lex_rule.l"
 RETURN_TOKEN(SYNC);
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 95 "lex_rule.l"
+#line 96 "lex_rule.l"
 RETURN_TOKEN(SELECT);
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 96 "lex_rule.l"
+#line 97 "lex_rule.l"
 RETURN_TOKEN(CALC);
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 97 "lex_rule.l"
+#line 98 "lex_rule.l"
 RETURN_TOKEN(FROM);
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 98 "lex_rule.l"
+#line 99 "lex_rule.l"
 RETURN_TOKEN(WHERE);
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 99 "lex_rule.l"
+#line 100 "lex_rule.l"
 RETURN_TOKEN(AND);
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 100 "lex_rule.l"
+#line 101 "lex_rule.l"
 RETURN_TOKEN(INSERT);
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 101 "lex_rule.l"
+#line 102 "lex_rule.l"
 RETURN_TOKEN(INTO);
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 102 "lex_rule.l"
+#line 103 "lex_rule.l"
 RETURN_TOKEN(VALUES);
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 103 "lex_rule.l"
+#line 104 "lex_rule.l"
 RETURN_TOKEN(DELETE);
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 104 "lex_rule.l"
+#line 105 "lex_rule.l"
 RETURN_TOKEN(UPDATE);
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 105 "lex_rule.l"
+#line 106 "lex_rule.l"
 RETURN_TOKEN(SET);
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 106 "lex_rule.l"
+#line 107 "lex_rule.l"
 RETURN_TOKEN(TRX_BEGIN);
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 107 "lex_rule.l"
+#line 108 "lex_rule.l"
 RETURN_TOKEN(TRX_COMMIT);
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 108 "lex_rule.l"
+#line 109 "lex_rule.l"
 RETURN_TOKEN(TRX_ROLLBACK);
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 109 "lex_rule.l"
+#line 110 "lex_rule.l"
 RETURN_TOKEN(INT_T);
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 110 "lex_rule.l"
+#line 111 "lex_rule.l"
 RETURN_TOKEN(STRING_T);
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 111 "lex_rule.l"
+#line 112 "lex_rule.l"
 RETURN_TOKEN(FLOAT_T);
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 112 "lex_rule.l"
+#line 113 "lex_rule.l"
 RETURN_TOKEN(DATE_T);
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 113 "lex_rule.l"
+#line 114 "lex_rule.l"
 RETURN_TOKEN(LOAD);
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 114 "lex_rule.l"
+#line 115 "lex_rule.l"
 RETURN_TOKEN(DATA);
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 115 "lex_rule.l"
+#line 116 "lex_rule.l"
 RETURN_TOKEN(INFILE);
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 116 "lex_rule.l"
+#line 117 "lex_rule.l"
 RETURN_TOKEN(EXPLAIN);
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 117 "lex_rule.l"
+#line 118 "lex_rule.l"
 RETURN_TOKEN(GROUP);
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 118 "lex_rule.l"
+#line 119 "lex_rule.l"
 RETURN_TOKEN(BY);
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 119 "lex_rule.l"
+#line 120 "lex_rule.l"
 RETURN_TOKEN(STORAGE);
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 120 "lex_rule.l"
+#line 121 "lex_rule.l"
 RETURN_TOKEN(FORMAT);
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 121 "lex_rule.l"
+#line 122 "lex_rule.l"
 RETURN_TOKEN(LIKE);
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 123 "lex_rule.l"
+#line 124 "lex_rule.l"
 RETURN_TOKEN(JOIN);
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 124 "lex_rule.l"
+#line 125 "lex_rule.l"
 RETURN_TOKEN(INNER);
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 126 "lex_rule.l"
+#line 127 "lex_rule.l"
 RETURN_TOKEN(LEFTJOIN);
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 127 "lex_rule.l"
+#line 128 "lex_rule.l"
 RETURN_TOKEN(RIGHTJOIN);
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 128 "lex_rule.l"
+#line 129 "lex_rule.l"
 RETURN_TOKEN(INNERJOIN);
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 129 "lex_rule.l"
+#line 130 "lex_rule.l"
 RETURN_TOKEN(INPUT);
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 130 "lex_rule.l"
+#line 131 "lex_rule.l"
 RETURN_TOKEN(PROJ);
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 131 "lex_rule.l"
+#line 132 "lex_rule.l"
 RETURN_TOKEN(INSUBFILTER);
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 132 "lex_rule.l"
+#line 133 "lex_rule.l"
 RETURN_TOKEN(FILTER);
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 134 "lex_rule.l"
+#line 135 "lex_rule.l"
 RETURN_TOKEN(UNIQUE);
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 136 "lex_rule.l"
+#line 137 "lex_rule.l"
 RETURN_TOKEN(VECTOR_T);
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 137 "lex_rule.l"
+#line 138 "lex_rule.l"
 RETURN_TOKEN(L2_DISTANCE);
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 138 "lex_rule.l"
+#line 139 "lex_rule.l"
 RETURN_TOKEN(COSINE_DISTANCE);
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 139 "lex_rule.l"
+#line 140 "lex_rule.l"
 RETURN_TOKEN(INNER_DISTANCE);
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 141 "lex_rule.l"
+#line 142 "lex_rule.l"
 RETURN_TOKEN(IN);
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 142 "lex_rule.l"
+#line 143 "lex_rule.l"
 RETURN_TOKEN(EXSIST);
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 143 "lex_rule.l"
+#line 144 "lex_rule.l"
 RETURN_TOKEN(NOT);
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 144 "lex_rule.l"
+#line 145 "lex_rule.l"
 RETURN_TOKEN(PRIMARY);
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 145 "lex_rule.l"
+#line 146 "lex_rule.l"
 RETURN_TOKEN(KEY);
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 146 "lex_rule.l"
+#line 147 "lex_rule.l"
 RETURN_TOKEN(NULLABLE);
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 148 "lex_rule.l"
+#line 149 "lex_rule.l"
 RETURN_TOKEN(TABLEEQ);
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 149 "lex_rule.l"
+#line 150 "lex_rule.l"
 RETURN_TOKEN(ATTRSEQ);
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 150 "lex_rule.l"
+#line 151 "lex_rule.l"
 RETURN_TOKEN(PREDICATEEQ);
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 151 "lex_rule.l"
+#line 152 "lex_rule.l"
 RETURN_TOKEN(ATTRSSUB);
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 152 "lex_rule.l"
+#line 153 "lex_rule.l"
 RETURN_TOKEN(REFERENCE);
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 153 "lex_rule.l"
+#line 154 "lex_rule.l"
 RETURN_TOKEN(NOTNULL);
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 157 "lex_rule.l"
+#line 158 "lex_rule.l"
 yylval->string=strdup(yytext); RETURN_TOKEN(ID);
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 158 "lex_rule.l"
+#line 159 "lex_rule.l"
 RETURN_TOKEN(LBRACE);
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 159 "lex_rule.l"
+#line 160 "lex_rule.l"
 RETURN_TOKEN(RBRACE);
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 160 "lex_rule.l"
+#line 161 "lex_rule.l"
 RETURN_TOKEN(LBRACKET);
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 161 "lex_rule.l"
+#line 162 "lex_rule.l"
 RETURN_TOKEN(RBRACKET);
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 162 "lex_rule.l"
+#line 163 "lex_rule.l"
 RETURN_TOKEN(BAR);
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 165 "lex_rule.l"
+#line 166 "lex_rule.l"
 RETURN_TOKEN(COMMA);
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 167 "lex_rule.l"
+#line 168 "lex_rule.l"
 RETURN_TOKEN(EQ);
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 168 "lex_rule.l"
+#line 169 "lex_rule.l"
 RETURN_TOKEN(LE);
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 169 "lex_rule.l"
+#line 170 "lex_rule.l"
 RETURN_TOKEN(NE);
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 170 "lex_rule.l"
+#line 171 "lex_rule.l"
 RETURN_TOKEN(NE);
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 171 "lex_rule.l"
+#line 172 "lex_rule.l"
 RETURN_TOKEN(LT);
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 172 "lex_rule.l"
+#line 173 "lex_rule.l"
 RETURN_TOKEN(GE);
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 173 "lex_rule.l"
+#line 174 "lex_rule.l"
 RETURN_TOKEN(GT);
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 175 "lex_rule.l"
+#line 176 "lex_rule.l"
 ECHO;
 	YY_BREAK
 #line 1689 "lex_rule.cpp"
@@ -2841,7 +2841,7 @@ void yyfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 175 "lex_rule.l"
+#line 176 "lex_rule.l"
 
 
 void scan_string(const char *str, yyscan_t scanner) {

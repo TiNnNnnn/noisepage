@@ -57,6 +57,7 @@ extern double atof();
 /* 不区分大小写 */
 %option case-insensitive
 %option bison-locations
+%option noyywrap
 
 WHITE_SAPCE      [\ \t\b\f]
 DIGIT            [0-9]+
