@@ -1,6 +1,12 @@
 #include "optimizer/rules/wetune_rules.h"
 
 namespace noisepage::optimizer {
+            /**
+             * MakePattern is used to make a pattern from WPattern
+             * @param p WPattern to make pattern from
+             * @param sets the set of strings to be filled with rel_or_attrs
+             * @returns a new Pattern object
+             */
             Pattern* WeTuneRule::MakePattern(WPattern* p, std::unordered_set<std::string>& sets){
                 if(p == nullptr)return nullptr;
                 Pattern* new_pattern;
@@ -11,7 +17,7 @@ namespace noisepage::optimizer {
                     new_pattern->AddChild(left);
                     new_pattern->AddChild(right);
                     new_pattern->AddRelOrAttr(p->rel_or_attrs);
-                }else if(p->type == PatternType::P_INNERJOIN){
+                }else if(p->type == PatternType::P_LEFTJOIN){
                     new_pattern = new Pattern(OpType::LOGICALLEFTJOIN);
                     auto left = MakePattern(p->children_[0],sets);
                     auto right = MakePattern(p->children_[1],sets);
@@ -35,13 +41,11 @@ namespace noisepage::optimizer {
                     new_pattern->AddRelOrAttr(p->rel_or_attrs);
                 }else if(p->type == PatternType::P_PROJ){
                     new_pattern = new Pattern(OpType::LOGICALPROJECTION);
-                    /**
-                     * at most of time, projection means the subquery 
-                     */
                     auto left = MakePattern(p->children_[0],sets);
                     new_pattern->AddChild(left);
                     new_pattern->AddRelOrAttr(p->rel_or_attrs);
                 }else if(p->type == PatternType::P_INSUB){
+                    /*we treat 'insub' as 'semi join'*/
                     new_pattern = new Pattern(OpType::LOGICALSEMIJOIN);
                     auto left = MakePattern(p->children_[0],sets);
                     auto right = MakePattern(p->children_[1],sets);
@@ -52,7 +56,9 @@ namespace noisepage::optimizer {
                     std::cout<<"error type of pattern"<<std::endl;
                     return nullptr;
                 }
-                for(auto e : p->rel_or_attrs)sets.insert(e);
+                for(auto e : p->rel_or_attrs){
+                    sets.insert(e);
+                }
                 for(size_t i=0;i<p->rel_or_attrs.size();i++){
                     binder_[p->rel_or_attrs[i]] = new_pattern;
                 }     
@@ -319,7 +325,11 @@ namespace noisepage::optimizer {
                 }
                 return ret;
             }
-
+            /**
+             * BuildRewritePlan: auto build a rewrite plan based on the pattern
+             * @param p: the pattern to build
+             * @param context: the optimization context
+             */
             std::unique_ptr<AbstractOptimizerNode> WeTuneRule::BuildRewritePlan(Pattern* p,OptimizationContext *context) const {
                 //get associated constrains
                 std::vector<ReWriteConstrain> constrains;
@@ -504,17 +514,21 @@ namespace noisepage::optimizer {
                 }
                 return nullptr;
             }
-
-            void WeTuneRule::GetTransConstrains(){
-                //find the attr_or_rel in right but not in left.
+            
+            /**
+             * GetTransConstrains: Divide the constrains into two parts, one is used to transform the pattern, the other is used to check the pattern
+             * @param constrains: the constrains to divide
+             */ 
+            void WeTuneRule::ClassifyTransConstrains(){
+                /*find the attr_or_rel in right but not in left*/
                 std::unordered_set<std::string>only_right;
                 for(auto t : substitute_sets_){
                     if(match_pattern_sets_.find(t) == match_pattern_sets_.end()){
                         only_right.insert(t);
                     }
                 }
+                /*classifer constrains into two types*/
                 std::vector<ReWriteConstrain> new_constrains;
-                //classifer constrains into two types;
                 for(const auto& c : constrains_){
                     if(only_right.find(c.placeholders[0]) != only_right.end() || only_right.find(c.placeholders[1]) != only_right.end()){
                         trans_constrains_.push_back(c);
@@ -608,7 +622,6 @@ namespace noisepage::optimizer {
                         /**
                          * FIXME:
                          */
-
                     }
                     default:{
                         std::cerr<<"intercheck error while get rel with unsupport pattern type"<<std::endl;

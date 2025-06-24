@@ -101,18 +101,7 @@ void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,
         std::cerr << "Failed to open file: " << fname.second << std::endl;
         return;
       }
-      // std::string rule;
-      // while (std::getline(file, rule)) {
-      //   if (rule.empty()) continue;
-      //   std::unique_ptr<ParsedSqlNode> sql_node;
-      //   /**parse text rules to rulenode*/
-      //   if(!parse_stage.handle_request(rule,sql_node)){
-      //     std::cerr <<"Faild to parse rule file: "<< fname.second <<std::endl;
-      //     return;
-      //   }
-      //   Rule* wetune_rule = new WeTuneRule(rule,std::move(sql_node));
-      //   wetune_rules[rule] = wetune_rule;
-      // }
+      std::cout<<"read wetune rule file: "<<fname.second<<std::endl;
       std::stringstream buffer;
       buffer << file.rdbuf();
       std::string content = buffer.str();
@@ -120,10 +109,9 @@ void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,
       size_t start = 0;
       while (true) {
           size_t end = content.find('\n', start);
-          if (end == std::string::npos) break;
-
+          if (end == std::string::npos) 
+            break;
           std::string rule = content.substr(start, end - start);
-
           rule.erase(rule.begin(), std::find_if(rule.begin(), rule.end(),
                                                 [](unsigned char ch) { return !std::isspace(ch); }));
           rule.erase(std::find_if(rule.rbegin(), rule.rend(),
@@ -138,9 +126,9 @@ void RuleSet::read_wetune_rules(std::unordered_map<int,std::string> &file_names,
               std::cerr << "Failed to parse rule file: " << fname.second << std::endl;
               return;
           }
+          std::cout<<"parse rule: ["<<rule<<"]"<<std::endl;
           Rule* wetune_rule = new WeTuneRule(rule, std::move(sql_node));
           wetune_rules[rule] = wetune_rule;
-
           start = end + 1;
       }
     }

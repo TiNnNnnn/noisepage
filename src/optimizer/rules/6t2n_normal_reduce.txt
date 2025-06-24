@@ -1,1 +1,1 @@
-Proj*<a0 s0>(Input<t0>)|Proj<a1 s1>(Input<t1>)|Unique(t0,a0);TableEq(t1,t0);AttrsEq(a1,a0)\n
+Proj*<a0 s0>(Input<t0>)|Proj<a1 s1>(Input<t1>)|AttrsSub(a0,t0);Unique(t0,a0);TableEq(t1,t0);AttrsEq(a1,a0);SchemaEq(s1,s0)\n

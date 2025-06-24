@@ -23,9 +23,10 @@ namespace noisepage::optimizer {
         public:
             WeTuneRule(std::string r,std::unique_ptr<ParsedSqlNode> sql_node){
                 constrains_ = sql_node->rule.condtions;
+                /*match_pattern is the src pattern,substitute is the dst pattern*/
                 match_pattern_ =  MakePattern(sql_node->rule.left,match_pattern_sets_);
                 substitute_ = MakePattern(sql_node->rule.right,substitute_sets_);
-                GetTransConstrains();
+                ClassifyTransConstrains();
                 name_ = MakeName(r);
             }
             
@@ -44,7 +45,7 @@ namespace noisepage::optimizer {
                 /*bind pattern with logical plan*/
                 if(!BindPatternToPlan(plan,match_pattern_))
                     return false;
-                /*check the constrains*/
+                /*check the constrains if valid*/
                 for(auto constrain : constrains_){
                     if(constrain.placeholders.size() != 2 || constrain.placeholders.size() != 4){
                         std::cerr<<"bad wetune rule constrain placeholder size: "<<constrain.placeholders.size()<<std::endl;
@@ -86,7 +87,7 @@ namespace noisepage::optimizer {
             bool InternalCheck(const Pattern* l,const Pattern* r ,ReWriteConstrain constrain,const Pattern* e1 = nullptr, const Pattern* e2 = nullptr) const;
             bool BindPatternToPlan(common::ManagedPointer<AbstractOptimizerNode>& plan,Pattern* pattern) const;
             std::unique_ptr<AbstractOptimizerNode> BuildRewritePlan(Pattern* p,OptimizationContext *context) const;
-            void GetTransConstrains();
+            void ClassifyTransConstrains();
             bool CheckPredEqual(std::vector<AnnotatedExpression>&l,std::vector<AnnotatedExpression>&r) const;
             void GetRelFromLeaf(const Pattern* sub_plan,std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
             void GetRelFromProj(const Pattern* plan, std::unordered_set<catalog::table_oid_t>& tb_oid_set) const;
@@ -100,16 +101,18 @@ namespace noisepage::optimizer {
                 return "LOGICAL_WETUNE_" + std::to_string(hash_value);
             }
         private:
-            // A substitute defines the structure of the result after applying the rule
+            /*A substitute defines the structure of the result after applying the rule*/
             Pattern* substitute_;
-            //rule name contains its rulesttr with hash
+            /*rule name contains its rulesttr with hash*/
             std::string name_;
-            //divide constrains into two types
+            /**
+             * constrains are divided constrains into two types
+             */
             std::vector<ReWriteConstrain> constrains_;
             std::vector<ReWriteConstrain> trans_constrains_;
-            //binder
+            /*mapping form constraints placeholders to patterns*/
             std::unordered_map<std::string,Pattern*> binder_;
-            //collect the constrains placeholders
+            /*collect the constrains placeholders*/
             std::unordered_set<std::string> match_pattern_sets_;
             std::unordered_set<std::string> substitute_sets_;
     };
