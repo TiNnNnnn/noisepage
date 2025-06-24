@@ -219,6 +219,7 @@ void Optimizer::OptimizeLoop(group_id_t root_group_id, PropertySet *required_pro
   // Perform rewrite first
   task_stack->Push(new TopDownRewrite(root_group_id, root_context, RuleSetName::PREDICATE_PUSH_DOWN));
   task_stack->Push(new BottomUpRewrite(root_group_id, root_context, RuleSetName::UNNEST_SUBQUERY, false));
+  task_stack->Push(new WeTuneRewrite(root_group_id, root_context, RuleSetName::LOGICAL_WETUNE));
   ExecuteTaskStack(task_stack, root_group_id, root_context);
 
   // Perform optimization after the rewrite

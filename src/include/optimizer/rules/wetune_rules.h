@@ -81,6 +81,15 @@ namespace noisepage::optimizer {
                 auto root = BuildRewritePlan(substitute_,context);   
                 transformed->push_back(root->Copy()); 
             }
+
+            /**
+             * Gets the rule's promise to apply against a GroupExpression
+             * @param group_expr GroupExpression to compute promise from
+             * @returns The promise value of applying the rule for ordering
+             */
+            RulePromise Promise(GroupExpression *group_expr) const {
+                return RulePromise::LOGICAL_PROMISE;
+            }
             
         private:
             Pattern* MakePattern(WPattern* p, std::unordered_set<std::string>& sets);

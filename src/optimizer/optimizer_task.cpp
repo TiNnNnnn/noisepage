@@ -406,6 +406,47 @@ void TopDownRewrite::Execute() {
   }
 }
 
+/**
+ * WeTuneRewrite::Execute
+ */
+void WeTuneRewrite::Execute() {
+  std::vector<RuleWithPromise> valid_rules;
+
+  auto cur_group = GetMemo().GetGroupByID(group_id_);
+  auto cur_group_expr = cur_group->GetLogicalExpression();
+
+  std::vector<Rule *> set = GetRuleSet().GetRulesByName(rule_set_name_);
+  for (auto &r : valid_rules) {
+    Rule *rule = r.GetRule();
+    GroupExprBindingIterator iterator(GetMemo(), cur_group_expr, rule->GetMatchPattern(),
+                                      context_->GetOptimizerContext()->GetTxn());
+    if (iterator.HasNext()) {
+      auto before = iterator.Next();
+      NOISEPAGE_ASSERT(!iterator.HasNext(), "there should only be 1 binding");
+      std::vector<std::unique_ptr<AbstractOptimizerNode>> after;
+      rule->Transform(common::ManagedPointer(before.get()), &after, context_);
+
+      // Rewrite rule should provide at most 1 expression
+      NOISEPAGE_ASSERT(after.size() <= 1, "rule provided too many transformations");
+      if (!after.empty()) {
+        auto &new_expr = after[0];
+        context_->GetOptimizerContext()->ReplaceRewriteExpression(common::ManagedPointer(new_expr.get()), group_id_);
+        PushTask(new TopDownRewrite(group_id_, context_, rule_set_name_));
+        return;
+      }
+    }
+    cur_group_expr->SetRuleExplored(rule);
+  }
+
+  size_t size = cur_group_expr->GetChildrenGroupsSize();
+  for (size_t child_group_idx = 0; child_group_idx < size; child_group_idx++) {
+    // Need to rewrite all sub trees first
+    auto id = cur_group_expr->GetChildGroupId(static_cast<int>(child_group_idx));
+    auto task = new TopDownRewrite(id, context_, rule_set_name_);
+    PushTask(task);
+  }
+}
+
 void BottomUpRewrite::Execute() {
   std::vector<RuleWithPromise> valid_rules;
 

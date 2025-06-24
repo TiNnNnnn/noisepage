@@ -72,7 +72,7 @@ namespace noisepage::optimizer {
                     case RewriteConstrainType::C_NotNull:
                     case RewriteConstrainType::C_SubAttrs:
                     case RewriteConstrainType::C_AttrsEq:{
-
+                        /*fetch attrs from logical plan and meta */
                         auto get_attrs = [this,constrain](const Pattern* p) -> std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> {
                             if(p->Type() == OpType::LOGICALINNERJOIN){
                                 auto filter_predicates = std::vector<AnnotatedExpression>(p->inner_join_->GetJoinPredicates());
@@ -97,8 +97,9 @@ namespace noisepage::optimizer {
                             }
                         };
 
-                        //check the list of attr if equal
+                        /*check the list of attr if equal*/
                         if(constrain.type == RewriteConstrainType::C_AttrsEq){
+                            /*get constrain placeholder's depended attr*/
                             auto l_attr = get_attrs(l);
                             auto r_attr = get_attrs(r);
                             if(l_attr.size() != r_attr.size())return false;
@@ -642,12 +643,21 @@ namespace noisepage::optimizer {
                 }
                 return attrs;
             }
-
-            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> WeTuneRule::GetJoinAttrs(std::vector<noisepage::optimizer::AnnotatedExpression>& preds, const Pattern* p,const ReWriteConstrain& c) const{
+            
+            /**
+             * GetJoinAttrs: get the join attributes from the pattern and the constraints
+             * @param preds: the predicates of the join
+             * @param p: the pattern of the join
+             * @param c: the constraints of the join
+             * @returns a set of attributes that are used in the join
+             */
+            std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> WeTuneRule::GetJoinAttrs(
+                std::vector<noisepage::optimizer::AnnotatedExpression>& preds, 
+                const Pattern* p,
+                const ReWriteConstrain& c) const{
                 std::unordered_set<std::tuple<catalog::col_oid_t,catalog::table_oid_t,catalog::db_oid_t>,TupleHash> attrs;
                 /**
-                 * if c_pos == 0,then we get attrs of left relation
-                 * if c_pos == 1,then we get attrs of right relation
+                 * if c_pos == 0,then we get attrs of left relation; if c_pos == 1,then we get attrs of right relation
                  */
                 int c_pos = -1;
                 for(size_t i=0; i < p->GetRelOrAttr().size();i++){
@@ -659,22 +669,27 @@ namespace noisepage::optimizer {
                     }
                 }  
                 if(c_pos != 0 || c_pos != 1){
-                    std::cerr<<"failed to find constraint item in pattern relorattrs"<<std::endl;
-                    return attrs;
+                    std::cerr<<"failed to find constraint item in pattern rel or attrs"<<std::endl;
+                    exit(-1);
                 } 
+
+                /*LogicJoin node maybe not offer table info, we should find them from child node*/
                 auto GetTableNames = [this](const Pattern* p,int idx) -> std::unordered_set<catalog::table_oid_t> {
                     auto child = p->Children()[idx];
                     std::unordered_set<catalog::table_oid_t> tb_oid_set;
+                    /*In Wetune fomat, LogicJoin's child is Input or Project*/
                     if(child->Type() == OpType::LEAF){
                         GetRelFromLeaf(child,tb_oid_set);
                     }else if (child->Type() == OpType::LOGICALPROJECTION){
                         GetRelFromProj(p,tb_oid_set);
                     }else{
                         std::cerr<<"bad type of join children pattern"<<std::endl;
+                        exit(-1);
                     }
                     return tb_oid_set;
                 };
                 auto tb_sets = GetTableNames(p,c_pos);
+
                 for(size_t i=0;i<preds.size();i++){
                     auto expr = preds[i].GetExpr();
                     switch(expr->GetExpressionType()){

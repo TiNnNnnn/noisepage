@@ -450,5 +450,36 @@ class BottomUpRewrite : public OptimizerTask {
   bool has_optimized_child_;
 };
 
+class WeTuneRewrite : public OptimizerTask {
+ public:
+  /**
+   * Constructor for TopDownRewrite task
+   * @param group_id Group to perform rewriting against
+   * @param context Current optimize context
+   * @param rule_set_name RuleSet to execute
+   */
+  WeTuneRewrite(group_id_t group_id, OptimizationContext *context, RuleSetName rule_set_name)
+      : OptimizerTask(context, OptimizerTaskType::TOP_DOWN_REWRITE),
+        group_id_(group_id),
+        rule_set_name_(rule_set_name) {}
+
+  /**
+   * Function to execute the task
+   */
+  void Execute() override;
+
+ private:
+  /**
+   * GroupID to do top-down rewriting for
+   */
+  group_id_t group_id_;
+
+  /**
+   * Set of rules to apply
+   */
+  RuleSetName rule_set_name_;
+};
+
 }  // namespace optimizer
 }  // namespace noisepage
+
